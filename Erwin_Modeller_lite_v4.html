@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ERwin Modeller Lite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy:         #0E2A47;
+      --navy-dark:    #0B1F33;
+      --navy-deep:    #061625;
+      --orange:       #F2671F;
+      --orange-dark:  #D85614;
+      --white:        #FFFFFF;
+      --bg:           #F5F6F8;
+      --card:         #FFFFFF;
+      --border:       #E1E5EA;
+      --border-soft:  #ECEFF3;
+      --text:         #1B2733;
+      --text-muted:   #5B6B7E;
+      --text-light:   #8D9AA8;
+      --error:        #C8341B;
+      --error-bg:     #FBEAE6;
+      --warning:      #B5660C;
+      --warning-bg:   #FDF3E2;
+      --success:      #2D7A3E;
+      --success-bg:   #E5F2E8;
+      --shadow-sm:    0 1px 2px rgba(14, 42, 71, 0.06), 0 1px 3px rgba(14, 42, 71, 0.04);
+      --shadow:       0 2px 4px rgba(14, 42, 71, 0.06), 0 4px 12px rgba(14, 42, 71, 0.08);
+      --radius:       6px;
+      --radius-lg:    10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ========= Hero (navy banner) ========= */
+    .hero {
+      background: var(--navy);
+      color: var(--white);
+      padding: 56px 0 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 88% 30%, rgba(242, 103, 31, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 5% 100%, rgba(95, 169, 230, 0.10) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .hero-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 32px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 32px;
+      position: relative;
+      z-index: 1;
+    }
+    .title-stack .mark {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .title {
+      font-family: inherit;
+      font-size: 46px;
+      line-height: 1.1;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--white);
+    }
+    .title .lite {
+      display: inline-block;
+      font-family: inherit;
+      font-style: normal;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      vertical-align: 14px;
+      margin-left: 14px;
+      padding: 5px 11px;
+      background: var(--orange);
+      color: var(--white);
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.78);
+      text-align: right;
+      line-height: 1.7;
+    }
+    .subtitle strong {
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    /* ========= Page container ========= */
+    .container {
+      max-width: 1080px;
+      margin: -40px auto 0;
+      padding: 0 32px 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ========= Section cards ========= */
+    section {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 36px 40px;
+      margin-bottom: 24px;
+    }
+    .section-label {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--navy);
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-weight: 700;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-soft);
+    }
+    .section-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: var(--navy);
+      color: var(--white);
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    /* ========= Drop zone ========= */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      background: var(--bg);
+      padding: 64px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: var(--radius);
+    }
+    .drop-zone:hover {
+      border-color: var(--navy);
+      background: rgba(14, 42, 71, 0.025);
+    }
+    .drop-zone.dragging {
+      border-color: var(--orange);
+      border-style: solid;
+      background: rgba(242, 103, 31, 0.05);
+    }
+    .drop-zone-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+    .drop-zone-title em {
+      color: var(--orange);
+      font-style: normal;
+      font-weight: 700;
+    }
+    .drop-zone-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+    input[type="file"] { display: none; }
+
+    /* ========= Folder source toggle ========= */
+    .link-btn {
+      background: none;
+      border: none;
+      color: var(--navy);
+      font-family: inherit;
+      font-size: inherit;
+      font-weight: 600;
+      padding: 0 0 1px;
+      border-bottom: 1px dashed var(--navy);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .link-btn:hover {
+      color: var(--orange);
+      border-bottom-color: var(--orange);
+    }
+
+    /* ========= Folder picker panel ========= */
+    .folder-picker {
+      margin-top: 24px;
+      padding: 22px 24px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .folder-picker-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .folder-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+    .folder-pick-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .folder-pick-row select {
+      flex: 1;
+      min-width: 0;
+    }
+    .folder-latest-tag {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--orange);
+      color: var(--white);
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+      transition: opacity 0.2s;
+    }
+    .folder-latest-tag.dim {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ========= Preferred folder (File System Access API) ========= */
+    .preferred-row {
+      margin-bottom: 20px;
+    }
+    .preferred-banner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, var(--navy) 0%, #1A3A5C 100%);
+      color: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 6px rgba(14, 42, 71, 0.18);
+    }
+    .preferred-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .preferred-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .preferred-info .info-label {
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 3px;
+      font-size: 10px;
+    }
+    .preferred-info .folder-name {
+      color: var(--white);
+      font-size: 14px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .preferred-banner .btn-reload {
+      background: var(--orange);
+      color: var(--white);
+      border: 1px solid var(--orange);
+      font-weight: 700;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 9px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .preferred-banner .btn-reload:hover {
+      background: var(--orange-dark);
+      border-color: var(--orange-dark);
+    }
+    .preferred-banner .btn-reload:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .btn-link-light {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.65);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 6px;
+      text-decoration: underline;
+      transition: color 0.15s;
+    }
+    .btn-link-light:hover { color: var(--white); }
+
+    .preferred-setup {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 14px 16px;
+      background: var(--bg);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+    .preferred-setup .preferred-note {
+      display: block;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-light);
+    }
+    .preferred-status {
+      font-size: 12px;
+      color: var(--success);
+      margin-top: 8px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .preferred-status.error { color: var(--error); }
+
+    /* ========= File info panel ========= */
+    .file-info {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      overflow: hidden;
+    }
+    .info-cell {
+      padding: 20px 22px;
+      border-right: 1px solid var(--border);
+      min-width: 0;
+    }
+    .info-cell:last-child { border-right: none; }
+    .info-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .info-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--navy);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .info-value.serif {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .variant-badge {
+      display: inline-block;
+      padding: 5px 11px;
+      background: var(--navy);
+      color: var(--white);
+      border-radius: 4px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* ========= Existing tables ========= */
+    .existing-toggle {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--navy);
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      transition: all 0.15s;
+    }
+    .existing-toggle:hover {
+      border-color: var(--navy);
+      background: rgba(14, 42, 71, 0.02);
+    }
+    .existing-toggle .chevron {
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+    .existing-toggle.open {
+      border-radius: var(--radius) var(--radius) 0 0;
+      border-bottom-color: var(--border-soft);
+    }
+    .existing-toggle.open .chevron { transform: rotate(90deg); }
+    .existing-panel {
+      display: none;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      background: var(--white);
+    }
+    .existing-panel.open { display: block; }
+    .existing-search {
+      width: 100%;
+      padding: 14px 20px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border-soft);
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+    }
+    .existing-search::placeholder { color: var(--text-light); }
+    .existing-list {
+      padding: 16px 20px;
+      max-height: 280px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0 32px;
+    }
+    .existing-row {
+      padding: 6px 0;
+      font-size: 13px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border-soft);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .existing-empty {
+      grid-column: 1 / -1;
+      padding: 24px 0;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ========= Form inputs ========= */
+    .field-label {
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--navy);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      border-color: var(--navy);
+      box-shadow: 0 0 0 3px rgba(14, 42, 71, 0.1);
+    }
+    input.error, select.error {
+      border-color: var(--error);
+    }
+    input.error:focus {
+      box-shadow: 0 0 0 3px rgba(200, 52, 27, 0.12);
+    }
+    input[type="number"] { -moz-appearance: textfield; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    select {
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%230E2A47' fill='none' stroke-width='1.5'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 34px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .error-msg {
+      color: var(--error);
+      font-size: 13px;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .name-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+    .hidden { display: none !important; }
+
+    /* ========= Columns table ========= */
+    .columns-head {
+      display: grid;
+      grid-template-columns: 2fr 1.3fr 1.4fr 60px 60px 36px;
+      gap: 10px;
+      padding: 0 4px 12px;
+      border-bottom: 2px solid var(--navy);
+      margin-bottom: 14px;
+    }
+    .col-head {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--navy);
+      font-weight: 700;
+    }
+    .col-head.center { text-align: center; }
+    .column-row {
+      display: grid;
+      grid-template-columns: 2fr 1.3fr 1.4fr 60px 60px 36px;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .size-inputs { display: grid; gap: 6px; }
+    .size-inputs.two { grid-template-columns: 1fr 1fr; }
+    .size-inputs.empty {
+      border: 1px dashed var(--border);
+      background: var(--bg);
+      border-radius: var(--radius);
+      height: 41px;
+      display: grid;
+      place-items: center;
+      color: var(--text-light);
+      font-size: 14px;
+    }
+    .size-inputs.empty::before { content: '—'; }
+
+    /* ========= Columns block locked state ========= */
+    #columns-block { transition: opacity 0.2s ease; }
+    #columns-block.locked {
+      opacity: 0.4;
+      pointer-events: none;
+      user-select: none;
+    }
+    .lock-tag {
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      margin-left: 8px;
+      font-weight: 500;
+      text-transform: none;
+    }
+    #columns-block:not(.locked) .lock-tag { display: none; }
+
+    .column-error {
+      font-size: 13px;
+      color: var(--error);
+      padding: 4px 4px 12px;
+      margin-top: -4px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+    .column-error::before {
+      content: '⚠';
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .column-error.hidden { display: none; }
+
+    /* ========= Checkboxes ========= */
+    .checkbox-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 11px;
+      height: 41px;
+    }
+    .check {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--white);
+      cursor: pointer;
+      position: relative;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .check:hover:not(:disabled) { border-color: var(--navy); }
+    .check:checked {
+      background: var(--navy);
+      border-color: var(--navy);
+    }
+    .check:checked::after {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 2px;
+      width: 5px;
+      height: 10px;
+      border: solid var(--white);
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    .check:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background: var(--bg);
+    }
+
+    /* ========= Remove button ========= */
+    .remove-btn {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 36px;
+      height: 41px;
+      font-size: 18px;
+      line-height: 1;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .remove-btn:hover:not(:disabled) {
+      background: var(--error);
+      color: var(--white);
+      border-color: var(--error);
+    }
+    .remove-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ========= Buttons ========= */
+    .btn {
+      padding: 10px 20px;
+      border: 1px solid var(--navy);
+      background: var(--white);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--navy);
+      border-radius: var(--radius);
+      transition: all 0.15s;
+    }
+    .btn:hover {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .btn-primary {
+      background: var(--orange);
+      color: var(--white);
+      border-color: var(--orange);
+      width: 100%;
+      padding: 16px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-top: 18px;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 6px rgba(242, 103, 31, 0.25);
+      text-transform: none;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--orange-dark);
+      border-color: var(--orange-dark);
+      box-shadow: 0 4px 12px rgba(242, 103, 31, 0.35);
+      transform: translateY(-1px);
+    }
+    .btn-primary:disabled {
+      background: var(--bg);
+      color: var(--text-light);
+      border-color: var(--border);
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+    .btn-primary::before, .btn-primary::after { display: none; }
+    .add-col-btn {
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .add-col-btn:hover {
+      border-color: var(--navy);
+      border-style: solid;
+      color: var(--navy);
+      background: rgba(14, 42, 71, 0.02);
+    }
+
+    /* ========= Banners / strips ========= */
+    .warning-strip {
+      padding: 12px 16px;
+      background: var(--warning-bg);
+      border: 1px solid #F2C68A;
+      border-left: 4px solid #E08A22;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--warning);
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .warning-strip::before {
+      content: '⚠';
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .success-banner {
+      padding: 16px 20px;
+      background: var(--success-bg);
+      border: 1px solid #B5D5BA;
+      border-left: 4px solid var(--success);
+      border-radius: var(--radius);
+      color: var(--success);
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .success-banner-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .success-banner-text::before {
+      content: '✓';
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .success-banner .btn {
+      border-color: var(--success);
+      color: var(--success);
+      background: var(--white);
+      flex-shrink: 0;
+      padding: 8px 16px;
+      font-size: 12px;
+    }
+    .success-banner .btn:hover {
+      background: var(--success);
+      color: var(--white);
+    }
+
+    .variant-notice {
+      padding: 12px 16px;
+      background: rgba(14, 42, 71, 0.04);
+      border-left: 3px solid var(--navy);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 14px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .table-name-row { margin-bottom: 28px; }
+
+    /* ========= Footer ========= */
+    footer {
+      background: var(--navy-dark);
+      color: rgba(255, 255, 255, 0.65);
+      padding: 36px 0;
+      margin-top: 48px;
+    }
+    .footer-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 32px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-brand {
+      color: var(--white);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    footer .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    /* ========= Scrollbar ========= */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; border: 2px solid var(--bg); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
+
+    /* ========= Responsive ========= */
+    @media (max-width: 720px) {
+      .hero { padding: 40px 0 64px; }
+      .hero-inner { grid-template-columns: 1fr; padding: 0 20px; }
+      .container { padding: 0 20px; }
+      .title { font-size: 32px; }
+      .subtitle { text-align: left; }
+      section { padding: 24px 20px; }
+      .file-info { grid-template-columns: 1fr; }
+      .info-cell { border-right: none; border-bottom: 1px solid var(--border); }
+      .info-cell:last-child { border-bottom: none; }
+      .columns-head, .column-row {
+        grid-template-columns: 1.6fr 1fr 1fr 44px 44px 32px;
+        gap: 6px;
+        font-size: 12px;
+      }
+      .existing-list { grid-template-columns: 1fr; }
+      .footer-inner { flex-direction: column; gap: 8px; padding: 0 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="title-stack">
+        <div class="mark">Entity-Relationship · Repository Editor</div>
+        <h1 class="title">erwin Modeller<span class="lite">Lite</span></h1>
+      </div>
+      <div class="subtitle">
+        <strong>v1.0</strong><br>
+        Runs in-browser<br>
+        No data leaves your device
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- §1 Upload -->
+    <section id="upload-section">
+      <div class="section-label"><span class="section-num">1</span>Load repository</div>
+
+      <div class="preferred-row">
+        <div id="preferred-banner" class="preferred-banner hidden">
+          <div class="preferred-icon">📁</div>
+          <div class="preferred-info">
+            <div class="info-label">Preferred folder</div>
+            <div class="folder-name" id="preferred-name">—</div>
+          </div>
+          <button type="button" class="btn-reload" id="reload-preferred-btn">Reload latest</button>
+          <button type="button" class="btn-link-light" id="clear-preferred-btn">Clear</button>
+        </div>
+        <div id="preferred-setup" class="preferred-setup hidden">
+          <button type="button" class="link-btn" id="set-preferred-btn">Set a preferred folder</button> &nbsp;for one-click auto-loading on every visit
+          <span class="preferred-note">Browser remembers the folder, not the path · requires Chrome / Edge / Opera</span>
+        </div>
+        <div id="preferred-status" class="preferred-status hidden"></div>
+      </div>
+
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-zone-title">Drop your <em>.xml</em> here</div>
+        <div class="drop-zone-sub">Or click to browse · DM-v9 / Classic supported</div>
+        <input type="file" id="file-input" accept=".xml,text/xml,application/xml">
+      </div>
+
+      <div class="folder-picker hidden" id="folder-picker">
+        <div class="folder-picker-head">
+          <div>
+            <div class="info-label">Folder</div>
+            <div class="folder-name" id="folder-name">—</div>
+          </div>
+          <div>
+            <div class="info-label">XML files</div>
+            <div class="info-value" id="folder-count">—</div>
+          </div>
+        </div>
+        <label class="field-label" for="folder-file-select">Active file (latest pre-selected)</label>
+        <div class="folder-pick-row">
+          <select id="folder-file-select"></select>
+          <span class="folder-latest-tag" id="folder-latest-tag">Latest</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- §2 File info -->
+    <section id="file-section" class="hidden">
+      <div class="section-label"><span class="section-num">2</span>Repository summary</div>
+      <div class="file-info">
+        <div class="info-cell">
+          <div class="info-label">File</div>
+          <div class="info-value serif" id="file-name">—</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-label">Variant</div>
+          <div class="info-value"><span class="variant-badge" id="variant-name">—</span></div>
+        </div>
+        <div class="info-cell">
+          <div class="info-label">Entities</div>
+          <div class="info-value" id="entity-count">—</div>
+        </div>
+      </div>
+
+      <button class="existing-toggle" id="existing-toggle">
+        <span>View existing tables</span>
+        <span class="chevron">›</span>
+      </button>
+      <div class="existing-panel" id="existing-panel">
+        <input type="text" class="existing-search" placeholder="Search table names…" id="existing-search" autocomplete="off">
+        <div class="existing-list" id="existing-list"></div>
+      </div>
+
+      <div class="variant-notice hidden" id="variant-notice"></div>
+    </section>
+
+    <!-- §3 Add table form -->
+    <section id="form-section" class="hidden">
+      <div class="section-label"><span class="section-num">3</span>Define new table</div>
+
+      <div id="success-banner" class="success-banner hidden">
+        <div class="success-banner-text" id="success-text">—</div>
+        <button class="btn" id="add-another-btn">Add another</button>
+      </div>
+
+      <div class="table-name-row">
+        <label class="field-label" for="table-name">Physical table name</label>
+        <input type="text" id="table-name" placeholder="e.g. CUST_ORDER_FACT" spellcheck="false" autocomplete="off" maxlength="128">
+        <div class="error-msg hidden" id="table-name-error"></div>
+        <div class="name-hint">Letters, digits, _ $ # · starts with a letter · max 128 bytes · not an Oracle reserved word</div>
+      </div>
+
+      <div id="columns-block" class="locked">
+        <div class="section-label">Columns <span class="lock-tag" id="lock-tag">· locked until table name is valid</span></div>
+        <div class="columns-head">
+          <div class="col-head">Physical name</div>
+          <div class="col-head">Data type</div>
+          <div class="col-head">Size / precision</div>
+          <div class="col-head center">Null</div>
+          <div class="col-head center">PK</div>
+          <div></div>
+        </div>
+        <div id="columns-list"></div>
+        <button class="add-col-btn" id="add-col-btn">+ Add column</button>
+
+        <div id="warnings"></div>
+      </div>
+
+      <button class="btn btn-primary" id="generate-btn" disabled>
+        Generate updated XML
+      </button>
+    </section>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <span class="footer-brand">erwin Modeller Lite</span>
+      <span class="mono" id="footer-variant">—</span>
+    </div>
+  </footer>
+
+<script>
+/* ================================================================
+   ERwin Modeller Lite — in-browser XML editor for ERwin repository
+   files. Parses, collects existing entity names into a dictionary,
+   renders an add-table form, and merges new entities back into the
+   DOM before offering a versioned download.
+   ================================================================ */
+
+const NS = {
+  dm:  'http://www.erwin.com/dm',
+  emx: 'http://www.erwin.com/dm/data',
+  udp: 'http://www.erwin.com/dm/metadata',
+  em2: 'http://www.erwin.com/dm/EM2data'
+};
+
+/* ==================== Oracle DDL rules ==================== */
+// Strictly reserved words from V$RESERVED_WORDS (reserved=Y). These cannot be
+// used as identifiers without double-quoting, which the spec deliberately
+// avoids. Comparison is case-insensitive.
+const ORACLE_RESERVED_WORDS = new Set([
+  'ACCESS','ADD','ALL','ALTER','AND','ANY','AS','ASC','AUDIT','BETWEEN','BY',
+  'CHAR','CHECK','CLUSTER','COLUMN','COLUMN_VALUE','COMMENT','COMPRESS',
+  'CONNECT','CREATE','CURRENT','DATE','DECIMAL','DEFAULT','DELETE','DESC',
+  'DISTINCT','DROP','ELSE','EXCLUSIVE','EXISTS','FILE','FLOAT','FOR','FROM',
+  'GRANT','GROUP','HAVING','IDENTIFIED','IMMEDIATE','IN','INCREMENT','INDEX',
+  'INITIAL','INSERT','INTEGER','INTERSECT','INTO','IS','LEVEL','LIKE','LOCK',
+  'LONG','MAXEXTENTS','MINUS','MLSLABEL','MODE','MODIFY','NESTED_TABLE_ID',
+  'NOAUDIT','NOCOMPRESS','NOT','NOWAIT','NULL','NUMBER','OF','OFFLINE','ON',
+  'ONLINE','OPTION','OR','ORDER','PCTFREE','PRIOR','PUBLIC','RAW','RENAME',
+  'RESOURCE','REVOKE','ROW','ROWID','ROWNUM','ROWS','SELECT','SESSION','SET',
+  'SHARE','SIZE','SMALLINT','START','SUCCESSFUL','SYNONYM','SYSDATE','TABLE',
+  'THEN','TO','TRIGGER','UID','UNION','UNIQUE','UPDATE','USER','VALIDATE',
+  'VALUES','VARCHAR','VARCHAR2','VIEW','WHENEVER','WHERE','WITH'
+]);
+
+const MAX_IDENTIFIER_LEN = 128;     // Oracle 12.2+
+const MAX_COLUMNS_PER_TABLE = 1000; // Oracle hard limit
+
+const TYPE_LIMITS = {
+  VARCHAR2: { needsLen: true,  maxLen: 4000 },     // up to 32767 with EXTENDED, but 4000 is the default and safer ceiling for a "lite" tool
+  CHAR:     { needsLen: true,  maxLen: 2000 },
+  NUMBER:   { needsLen: false, maxPrec: 38, minScale: -84, maxScale: 127 },
+  DATE:     {},
+  TIMESTAMP:{},
+  CLOB:     {},
+  BLOB:     {}
+};
+
+const DATA_TYPES = ['VARCHAR2','NUMBER','DATE','TIMESTAMP','CHAR','CLOB','BLOB'];
+
+/**
+ * Validate an Oracle identifier (table or column name) per the DDL rules.
+ * @returns {{ok:true} | {ok:false, error:string}}
+ */
+function validateIdentifier(name, kind = 'name') {
+  if (!name) return { ok: false, error: `${kind} cannot be empty` };
+  // Byte length: identifiers are byte-bounded, not char-bounded. ASCII = 1 byte,
+  // multibyte chars cost more. We approximate via TextEncoder.
+  const byteLen = new TextEncoder().encode(name).length;
+  if (byteLen > MAX_IDENTIFIER_LEN) {
+    return { ok: false, error: `${kind} exceeds ${MAX_IDENTIFIER_LEN}-byte limit (got ${byteLen})` };
+  }
+  if (!/^[A-Za-z]/.test(name)) {
+    return { ok: false, error: `${kind} must start with a letter` };
+  }
+  if (!/^[A-Za-z][A-Za-z0-9_$#]*$/.test(name)) {
+    return { ok: false, error: `${kind} may only contain letters, digits, _ $ #` };
+  }
+  if (ORACLE_RESERVED_WORDS.has(name.toUpperCase())) {
+    return { ok: false, error: `"${name}" is an Oracle reserved word` };
+  }
+  return { ok: true };
+}
+
+/**
+ * Validate a column's data-type sizing per Oracle limits.
+ * @returns {string|null} error string or null if ok
+ */
+function validateColumnSize(col) {
+  const limits = TYPE_LIMITS[col.type] || {};
+  if (limits.needsLen) {
+    const n = parseInt(col.size, 10);
+    if (!col.size || isNaN(n)) return `${col.type} requires a length`;
+    if (n < 1) return `${col.type} length must be ≥ 1`;
+    if (n > limits.maxLen) return `${col.type} length must be ≤ ${limits.maxLen}`;
+  }
+  if (col.type === 'NUMBER') {
+    if (col.size) {
+      const p = parseInt(col.size, 10);
+      if (isNaN(p) || p < 1 || p > limits.maxPrec) {
+        return `NUMBER precision must be 1–${limits.maxPrec}`;
+      }
+    }
+    if (col.scale !== '' && col.scale !== undefined && col.scale !== null) {
+      const s = parseInt(col.scale, 10);
+      if (isNaN(s) || s < limits.minScale || s > limits.maxScale) {
+        return `NUMBER scale must be ${limits.minScale} to ${limits.maxScale}`;
+      }
+    }
+  }
+  return null;
+}
+
+const state = {
+  fileName:    null,
+  doc:         null,
+  variant:     null,            // 'erwin-dm-v9' | 'erwin-classic' | 'unknown'
+  entityDict:  new Map(),       // UPPER-CASE name -> original-case name
+  domainMap:   new Map(),       // DM-v9 domain name -> id
+  columns:     [],
+  folderFiles: []               // sorted desc by lastModified, populated when a folder is picked
+};
+
+/* ==================== Upload / parse ==================== */
+
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const folderFileSelect = document.getElementById('folder-file-select');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('dragging');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragging');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+/* ----- Folder file dropdown (populated by the preferred-folder flow) ----- */
+
+folderFileSelect.addEventListener('change', (e) => {
+  const idx = parseInt(e.target.value, 10);
+  const file = state.folderFiles[idx];
+  if (!file) return;
+  document.getElementById('folder-latest-tag').classList.toggle('dim', idx !== 0);
+  handleFile(file);
+});
+
+function renderFolderPicker(files, folderName) {
+  const picker = document.getElementById('folder-picker');
+  // Prefer an explicitly-passed folder name (from the FS Access handle).
+  // Fall back to webkitRelativePath for any legacy webkitdirectory-loaded files.
+  const name = folderName
+    || (files[0].webkitRelativePath || '').split('/')[0]
+    || '(folder)';
+  document.getElementById('folder-name').textContent = name;
+  document.getElementById('folder-count').textContent = files.length.toLocaleString();
+
+  folderFileSelect.innerHTML = '';
+  files.forEach((f, i) => {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    const ts = formatTimestamp(f.lastModified);
+    const size = formatSize(f.size);
+    let path = f.webkitRelativePath || f.name;
+    if (path.startsWith(name + '/')) path = path.slice(name.length + 1);
+    opt.textContent = `${path}  ·  ${ts}  ·  ${size}${i === 0 ? '  ·  LATEST' : ''}`;
+    opt.title = `${path}\nModified: ${new Date(f.lastModified).toString()}\nSize: ${size}`;
+    folderFileSelect.appendChild(opt);
+  });
+  folderFileSelect.value = '0';
+  document.getElementById('folder-latest-tag').classList.remove('dim');
+  picker.classList.remove('hidden');
+}
+
+function formatTimestamp(ms) {
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+         `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function handleFile(file) {
+  try {
+    const text = await file.text();
+    const doc = new DOMParser().parseFromString(text, 'application/xml');
+    const err = doc.querySelector('parsererror');
+    if (err) {
+      alert('Could not parse XML file.\n\n' + err.textContent.slice(0, 300));
+      return;
+    }
+    state.fileName = file.name;
+    state.doc = doc;
+    // Sync the folder dropdown if this file is one of the folder files.
+    if (state.folderFiles.length) {
+      const idx = state.folderFiles.indexOf(file);
+      if (idx >= 0) {
+        folderFileSelect.value = String(idx);
+        document.getElementById('folder-latest-tag').classList.toggle('dim', idx !== 0);
+      }
+    }
+    analyzeDoc();
+    renderFileInfo();
+    renderExistingList();
+    initForm();
+    document.getElementById('form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    alert('Error reading file: ' + e.message);
+  }
+}
+
+/* ==================== Preferred folder (File System Access API) ====================
+ * Lets the user designate a folder once. The browser persists the directory handle
+ * in IndexedDB; on every visit we attempt to silently auto-load the latest XML from
+ * that folder. Permission usually has to be re-granted with one click per session.
+ *
+ * Chromium-only (Chrome / Edge / Opera). Firefox / Safari users will see the setup
+ * link but it will tell them the feature is unavailable.
+ * ============================================================================== */
+
+const FSA_SUPPORTED = typeof window.showDirectoryPicker === 'function';
+const PREFS_DB = 'erwinModellerLite';
+const PREFS_STORE = 'preferences';
+const PREFS_KEY = 'preferredFolder';
+
+state.preferredHandle = null;
+
+function openPrefsDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(PREFS_DB, 1);
+    req.onupgradeneeded = (e) => e.target.result.createObjectStore(PREFS_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function savePreferredHandle(handle) {
+  const db = await openPrefsDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(PREFS_STORE, 'readwrite');
+    tx.objectStore(PREFS_STORE).put(handle, PREFS_KEY);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function loadPreferredHandle() {
+  const db = await openPrefsDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(PREFS_STORE, 'readonly');
+    const req = tx.objectStore(PREFS_STORE).get(PREFS_KEY);
+    req.onsuccess = () => res(req.result || null);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function clearPreferredHandle() {
+  const db = await openPrefsDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(PREFS_STORE, 'readwrite');
+    tx.objectStore(PREFS_STORE).delete(PREFS_KEY);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+function setPreferredStatus(text, isError = false) {
+  const el = document.getElementById('preferred-status');
+  if (!text) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.textContent = text;
+  el.classList.remove('hidden');
+  el.classList.toggle('error', isError);
+}
+
+function renderPreferredUI() {
+  const banner = document.getElementById('preferred-banner');
+  const setup = document.getElementById('preferred-setup');
+  if (state.preferredHandle) {
+    banner.classList.remove('hidden');
+    setup.classList.add('hidden');
+    document.getElementById('preferred-name').textContent = state.preferredHandle.name;
+  } else {
+    banner.classList.add('hidden');
+    setup.classList.remove('hidden');
+  }
+}
+
+async function pickPreferredFolder() {
+  if (!FSA_SUPPORTED) {
+    alert('The "preferred folder" feature requires a Chromium-based browser (Chrome, Edge, Opera). ' +
+          'You can still use the drop zone above to load a single XML file.');
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'read', startIn: 'downloads' });
+    await savePreferredHandle(handle);
+    state.preferredHandle = handle;
+    renderPreferredUI();
+    setPreferredStatus(`Saved "${handle.name}" as your preferred folder.`);
+    await reloadFromPreferred(false);
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      setPreferredStatus('Could not set preferred folder: ' + e.message, true);
+    }
+  }
+}
+
+async function reloadFromPreferred(silent) {
+  const handle = state.preferredHandle;
+  if (!handle) return;
+  try {
+    let perm = await handle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') {
+      perm = await handle.requestPermission({ mode: 'read' });
+    }
+    if (perm !== 'granted') {
+      if (!silent) setPreferredStatus('Permission denied. Click "Reload latest" to grant access.', true);
+      return;
+    }
+    // Walk the folder, collecting XML files with their lastModified timestamps.
+    const files = [];
+    for await (const [name, entry] of handle.entries()) {
+      if (entry.kind === 'file' && name.toLowerCase().endsWith('.xml')) {
+        files.push(await entry.getFile());
+      }
+    }
+    if (!files.length) {
+      setPreferredStatus(`No .xml files found in "${handle.name}".`, true);
+      return;
+    }
+    files.sort((a, b) => b.lastModified - a.lastModified);
+    state.folderFiles = files;
+    renderFolderPicker(files, handle.name);
+    await handleFile(files[0]);
+    setPreferredStatus(`Loaded latest from "${handle.name}" — ${files[0].name} (${formatTimestamp(files[0].lastModified)}).`);
+  } catch (e) {
+    setPreferredStatus('Could not read preferred folder: ' + e.message, true);
+  }
+}
+
+async function clearPreferred() {
+  await clearPreferredHandle();
+  state.preferredHandle = null;
+  renderPreferredUI();
+  setPreferredStatus('Preferred folder cleared.');
+}
+
+async function initPreferredFolder() {
+  if (!FSA_SUPPORTED) {
+    // Hide the setup link entirely on Firefox/Safari to reduce noise.
+    document.getElementById('preferred-setup').classList.add('hidden');
+    return;
+  }
+  document.getElementById('set-preferred-btn').addEventListener('click', pickPreferredFolder);
+  document.getElementById('reload-preferred-btn').addEventListener('click', () => reloadFromPreferred(false));
+  document.getElementById('clear-preferred-btn').addEventListener('click', clearPreferred);
+
+  try {
+    const handle = await loadPreferredHandle();
+    if (handle) {
+      state.preferredHandle = handle;
+      renderPreferredUI();
+      // Try silent auto-load. If permission isn't already granted (most common
+      // case after a browser restart), the user just clicks "Reload latest".
+      const perm = await handle.queryPermission({ mode: 'read' });
+      if (perm === 'granted') {
+        await reloadFromPreferred(true);
+      } else {
+        setPreferredStatus(`Click "Reload latest" to grant access to "${handle.name}" and load the newest XML.`);
+      }
+    } else {
+      renderPreferredUI();
+    }
+  } catch (e) {
+    console.warn('Preferred folder init failed:', e);
+    renderPreferredUI();
+  }
+}
+
+initPreferredFolder();
+
+function analyzeDoc() {
+  const root = state.doc.documentElement;
+  state.variant    = detectVariant(root);
+  state.entityDict = collectEntityNames(state.doc, state.variant);
+  state.domainMap  = state.variant === 'erwin-dm-v9' ? collectDomainMap(state.doc) : new Map();
+}
+
+function detectVariant(root) {
+  const tag = root.tagName;
+  const fmt = root.getAttribute('Format') || '';
+  const ns  = root.namespaceURI || '';
+  if (tag === 'erwin' && fmt === 'erwin_Repository' && ns === NS.dm) return 'erwin-dm-v9';
+  const classicEntities = Array.from(root.getElementsByTagName('Entity'))
+    .filter(e => e.namespaceURI !== NS.emx);
+  if (classicEntities.length > 0) return 'erwin-classic';
+  return 'unknown';
+}
+
+function collectEntityNames(doc, variant) {
+  const dict = new Map();
+  if (variant === 'erwin-dm-v9') {
+    const entities = doc.getElementsByTagNameNS(NS.emx, 'Entity');
+    for (const e of entities) {
+      const nameAttr = e.getAttribute('name') || '';
+      let physical = nameAttr;
+      const props = e.getElementsByTagNameNS(NS.emx, 'EntityProps')[0];
+      if (props) {
+        const pn = props.getElementsByTagNameNS(NS.emx, 'Physical_Name')[0];
+        if (pn && pn.textContent.trim()) physical = pn.textContent.trim();
+      }
+      if (physical) dict.set(physical.toUpperCase(), physical);
+      if (nameAttr && !dict.has(nameAttr.toUpperCase())) dict.set(nameAttr.toUpperCase(), nameAttr);
+    }
+  } else if (variant === 'erwin-classic') {
+    const entities = Array.from(doc.getElementsByTagName('Entity'))
+      .filter(e => e.namespaceURI !== NS.emx);
+    for (const e of entities) {
+      const n = e.getAttribute('Name') || e.getAttribute('name') ||
+                e.getAttribute('Physical_Name') || '';
+      if (n) dict.set(n.toUpperCase(), n);
+    }
+  }
+  return dict;
+}
+
+function collectDomainMap(doc) {
+  const map = new Map();
+  const domains = doc.getElementsByTagNameNS(NS.emx, 'Domain');
+  for (const d of domains) {
+    const name = d.getAttribute('name');
+    const id   = d.getAttribute('id');
+    if (name && id) map.set(name, id);
+  }
+  return map;
+}
+
+/* ==================== UI render ==================== */
+
+function renderFileInfo() {
+  document.getElementById('file-section').classList.remove('hidden');
+  document.getElementById('form-section').classList.remove('hidden');
+  document.getElementById('file-name').textContent = state.fileName;
+  document.getElementById('variant-name').textContent = state.variant;
+  document.getElementById('entity-count').textContent = state.entityDict.size.toLocaleString();
+  document.getElementById('footer-variant').textContent = `Variant: ${state.variant}`;
+
+  const notice = document.getElementById('variant-notice');
+  if (state.variant === 'erwin-dm-v9') {
+    notice.textContent = 'Note · DM-v9 entities will appear in the model tree but must be dragged onto a diagram inside ERwin DM to be visible.';
+    notice.classList.remove('hidden');
+  } else if (state.variant === 'unknown') {
+    notice.textContent = 'Warning · Unknown ERwin variant. Output may not load cleanly in ERwin. Proceed with caution.';
+    notice.classList.remove('hidden');
+  } else {
+    notice.classList.add('hidden');
+  }
+}
+
+function renderExistingList(filter = '') {
+  const list = document.getElementById('existing-list');
+  list.innerHTML = '';
+  const names = [...state.entityDict.values()].sort((a, b) => a.localeCompare(b));
+  const filtered = filter
+    ? names.filter(n => n.toUpperCase().includes(filter.toUpperCase()))
+    : names;
+  if (!filtered.length) {
+    const empty = document.createElement('div');
+    empty.className = 'existing-empty';
+    empty.textContent = filter ? 'No matches' : 'No entities';
+    list.appendChild(empty);
+    return;
+  }
+  for (const n of filtered) {
+    const row = document.createElement('div');
+    row.className = 'existing-row';
+    row.textContent = n;
+    row.title = n;
+    list.appendChild(row);
+  }
+}
+
+document.getElementById('existing-toggle').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  const panel = document.getElementById('existing-panel');
+  btn.classList.toggle('open');
+  panel.classList.toggle('open');
+});
+
+document.getElementById('existing-search').addEventListener('input', (e) => {
+  renderExistingList(e.target.value);
+});
+
+/* ==================== Form ==================== */
+
+function initForm() {
+  state.columns = [];
+  addColumn();
+  document.getElementById('table-name').value = '';
+  validate();
+}
+
+function addColumn() {
+  if (state.columns.length >= MAX_COLUMNS_PER_TABLE) return;
+  state.columns.push({
+    id: crypto.randomUUID(),
+    name: '',
+    type: 'VARCHAR2',
+    size: '',
+    scale: '',
+    nullable: true,
+    pk: false
+  });
+  renderColumns();
+  validate();
+}
+
+function removeColumn(id) {
+  state.columns = state.columns.filter(c => c.id !== id);
+  renderColumns();
+  validate();
+}
+
+function renderColumns() {
+  const container = document.getElementById('columns-list');
+  container.innerHTML = '';
+  state.columns.forEach((col) => {
+    const row = document.createElement('div');
+    row.className = 'column-row';
+
+    // -- name
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'COLUMN_NAME';
+    nameInput.spellcheck = false;
+    nameInput.autocomplete = 'off';
+    nameInput.maxLength = MAX_IDENTIFIER_LEN;
+    nameInput.value = col.name;
+    nameInput.addEventListener('input', (e) => {
+      col.name = e.target.value;
+      validate();
+    });
+
+    // -- type
+    const typeSelect = document.createElement('select');
+    DATA_TYPES.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      if (col.type === t) opt.selected = true;
+      typeSelect.appendChild(opt);
+    });
+    typeSelect.addEventListener('change', (e) => {
+      col.type = e.target.value;
+      col.size = '';
+      col.scale = '';
+      renderColumns();
+      validate();
+    });
+
+    // -- size / precision
+    const sizeCell = document.createElement('div');
+    sizeCell.className = 'size-inputs';
+    const limits = TYPE_LIMITS[col.type] || {};
+    if (col.type === 'VARCHAR2' || col.type === 'CHAR') {
+      const s = document.createElement('input');
+      s.type = 'number';
+      s.placeholder = 'length';
+      s.min = '1';
+      s.max = String(limits.maxLen);
+      s.value = col.size;
+      s.addEventListener('input', (e) => { col.size = e.target.value; validate(); });
+      sizeCell.appendChild(s);
+    } else if (col.type === 'NUMBER') {
+      sizeCell.classList.add('two');
+      const p = document.createElement('input');
+      p.type = 'number'; p.placeholder = 'prec'; p.min = '1'; p.max = '38'; p.value = col.size;
+      p.addEventListener('input', (e) => { col.size = e.target.value; validate(); });
+      const sc = document.createElement('input');
+      sc.type = 'number'; sc.placeholder = 'scale'; sc.min = '-84'; sc.max = '127'; sc.value = col.scale;
+      sc.addEventListener('input', (e) => { col.scale = e.target.value; validate(); });
+      sizeCell.appendChild(p);
+      sizeCell.appendChild(sc);
+    } else {
+      sizeCell.classList.add('empty');
+    }
+
+    // -- nullable
+    const nullCell = document.createElement('div');
+    nullCell.className = 'checkbox-cell';
+    const nullChk = document.createElement('input');
+    nullChk.type = 'checkbox';
+    nullChk.className = 'check';
+    nullChk.checked = col.nullable;
+    nullChk.disabled = col.pk;
+    nullChk.addEventListener('change', (e) => {
+      col.nullable = e.target.checked;
+      validate();
+    });
+    nullCell.appendChild(nullChk);
+
+    // -- pk
+    const pkCell = document.createElement('div');
+    pkCell.className = 'checkbox-cell';
+    const pkChk = document.createElement('input');
+    pkChk.type = 'checkbox';
+    pkChk.className = 'check';
+    pkChk.checked = col.pk;
+    pkChk.addEventListener('change', (e) => {
+      col.pk = e.target.checked;
+      if (col.pk) col.nullable = false;
+      renderColumns();
+      validate();
+    });
+    pkCell.appendChild(pkChk);
+
+    // -- remove
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.textContent = '×';
+    removeBtn.type = 'button';
+    removeBtn.disabled = state.columns.length === 1;
+    removeBtn.title = 'Remove column';
+    removeBtn.addEventListener('click', () => removeColumn(col.id));
+
+    // mark inputs so validate() can find them by column id
+    nameInput.dataset.colId = col.id;
+    nameInput.dataset.role = 'name';
+
+    row.appendChild(nameInput);
+    row.appendChild(typeSelect);
+    row.appendChild(sizeCell);
+    row.appendChild(nullCell);
+    row.appendChild(pkCell);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+
+    // per-column error message (hidden until validate populates it)
+    const errEl = document.createElement('div');
+    errEl.className = 'column-error hidden';
+    errEl.id = `col-err-${col.id}`;
+    container.appendChild(errEl);
+  });
+}
+
+document.getElementById('add-col-btn').addEventListener('click', addColumn);
+document.getElementById('table-name').addEventListener('input', validate);
+
+/* ==================== Validation ==================== */
+
+function validate() {
+  const errs = [];
+  const warns = [];
+
+  // ----- table name -----
+  const tnInput = document.getElementById('table-name');
+  const tn = tnInput.value.trim();
+  const tnErr = document.getElementById('table-name-error');
+  tnInput.classList.remove('error');
+  tnErr.classList.add('hidden');
+
+  let tableNameValid = false;
+  if (!tn) {
+    errs.push('table-name-empty');
+  } else if (state.entityDict && state.entityDict.has(tn.toUpperCase())) {
+    errs.push('table-name-dup');
+    tnErr.textContent = `Table "${tn}" already exists in the model.`;
+    tnErr.classList.remove('hidden');
+    tnInput.classList.add('error');
+  } else {
+    const idCheck = validateIdentifier(tn, 'table name');
+    if (!idCheck.ok) {
+      errs.push('table-name-invalid');
+      tnErr.textContent = idCheck.error;
+      tnErr.classList.remove('hidden');
+      tnInput.classList.add('error');
+    } else {
+      tableNameValid = true;
+    }
+  }
+
+  // Lock the columns block until the table name passes its own checks.
+  document.getElementById('columns-block').classList.toggle('locked', !tableNameValid);
+
+  // ----- columns -----
+  if (!state.columns.length) errs.push('no-columns');
+  if (state.columns.length > MAX_COLUMNS_PER_TABLE) {
+    errs.push('too-many-columns');
+  }
+
+  const seen = new Map(); // upper-case name -> first column id seen with that name
+  let hasPK = false;
+  let bareNumber = false;
+
+  for (const col of state.columns) {
+    const errEl = document.getElementById(`col-err-${col.id}`);
+    const nameInput = document.querySelector(`input[data-col-id="${col.id}"][data-role="name"]`);
+    if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+    if (nameInput) nameInput.classList.remove('error');
+
+    const colErrors = [];
+
+    // name validation
+    const trimmed = col.name.trim();
+    if (!trimmed) {
+      colErrors.push('name required');
+      errs.push('col-empty');
+    } else {
+      const idCheck = validateIdentifier(trimmed, 'column name');
+      if (!idCheck.ok) {
+        colErrors.push(idCheck.error);
+        errs.push('col-invalid');
+      } else {
+        const key = trimmed.toUpperCase();
+        if (seen.has(key)) {
+          colErrors.push(`duplicate column name "${trimmed}"`);
+          errs.push('col-dup');
+        } else {
+          seen.set(key, col.id);
+        }
+      }
+    }
+
+    // size / type validation
+    const sizeErr = validateColumnSize(col);
+    if (sizeErr) {
+      colErrors.push(sizeErr);
+      errs.push('col-size');
+    }
+
+    // best-practice: bare NUMBER without precision
+    if (col.type === 'NUMBER' && !col.size) bareNumber = true;
+
+    if (col.pk) hasPK = true;
+
+    // surface error on the row (first error only — keeps the strip tidy)
+    if (colErrors.length && errEl) {
+      errEl.textContent = colErrors[0];
+      errEl.classList.remove('hidden');
+      if (nameInput && (colErrors[0].includes('column name') || colErrors[0].includes('reserved') || colErrors[0].includes('duplicate'))) {
+        nameInput.classList.add('error');
+      }
+    }
+  }
+
+  // ----- warnings (only when table name itself is valid, to avoid noise) -----
+  if (tableNameValid) {
+    if (state.columns.length && !hasPK) warns.push('no-pk');
+    if (bareNumber) warns.push('bare-number');
+    if (state.columns.length >= MAX_COLUMNS_PER_TABLE) warns.push('at-limit');
+  }
+
+  const wbox = document.getElementById('warnings');
+  wbox.innerHTML = '';
+  const warningMessages = {
+    'no-pk':       'No primary key selected — allowed, but not recommended',
+    'bare-number': 'NUMBER column has no precision — best practice is to specify NUMBER(p[,s])',
+    'at-limit':    `Reached Oracle's maximum of ${MAX_COLUMNS_PER_TABLE} columns per table`
+  };
+  warns.forEach(w => {
+    const el = document.createElement('div');
+    el.className = 'warning-strip';
+    el.textContent = warningMessages[w];
+    wbox.appendChild(el);
+  });
+
+  // disable Add column when at the hard limit
+  const addBtn = document.getElementById('add-col-btn');
+  addBtn.disabled = state.columns.length >= MAX_COLUMNS_PER_TABLE;
+  addBtn.style.opacity = addBtn.disabled ? '0.4' : '';
+  addBtn.style.cursor = addBtn.disabled ? 'not-allowed' : '';
+
+  document.getElementById('generate-btn').disabled = errs.length > 0;
+}
+
+/* ==================== Generate & download ==================== */
+
+document.getElementById('generate-btn').addEventListener('click', generate);
+document.getElementById('add-another-btn').addEventListener('click', () => {
+  document.getElementById('success-banner').classList.add('hidden');
+  initForm();
+  document.getElementById('table-name').focus();
+});
+
+function generate() {
+  const tableName = document.getElementById('table-name').value.trim();
+  const cols = state.columns.map(c => ({ ...c, name: c.name.trim() }));
+
+  if (state.variant === 'erwin-dm-v9') {
+    addEntityDMv9(state.doc, tableName, cols);
+  } else {
+    addEntityClassic(state.doc, tableName, cols);
+  }
+
+  // update in-memory dictionary so subsequent adds detect the new table
+  state.entityDict.set(tableName.toUpperCase(), tableName);
+  renderExistingList();
+  document.getElementById('entity-count').textContent = state.entityDict.size.toLocaleString();
+
+  // serialize + download
+  let xml = new XMLSerializer().serializeToString(state.doc);
+  if (!xml.startsWith('<?xml')) {
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
+  }
+  const outName = outputFilename(state.fileName);
+  downloadBlob(xml, outName, 'application/xml');
+
+  // roll forward so next generate increments off the new name
+  state.fileName = outName;
+  document.getElementById('file-name').textContent = outName;
+
+  const banner = document.getElementById('success-banner');
+  document.getElementById('success-text').textContent =
+    `Added ${tableName} · downloaded ${outName}`;
+  banner.classList.remove('hidden');
+  banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function outputFilename(input) {
+  const m = input.match(/^(.*_[Vv])(\d+)\.xml$/i);
+  if (m) {
+    const prefix = m[1];
+    const num = m[2];
+    const nextNum = (parseInt(num, 10) + 1).toString();
+    const padded = nextNum.length < num.length ? nextNum.padStart(num.length, '0') : nextNum;
+    return `${prefix}${padded}.xml`;
+  }
+  return `updated_${input}`;
+}
+
+function downloadBlob(text, filename, mime) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* ==================== erwin-classic emission ==================== */
+
+function addEntityClassic(doc, tableName, cols) {
+  const root = doc.documentElement;
+  const entity = doc.createElement('Entity');
+  entity.setAttribute('Name', tableName);
+  entity.setAttribute('Physical_Name', tableName);
+
+  cols.forEach((c) => {
+    const a = doc.createElement('Attribute');
+    a.setAttribute('Name', c.name);
+    a.setAttribute('Physical_Name', c.name);
+    a.setAttribute('Datatype', formatDatatype(c));
+    a.setAttribute('Nullable', c.nullable ? 'true' : 'false');
+    entity.appendChild(a);
+  });
+
+  const pkCols = cols.filter(c => c.pk);
+  if (pkCols.length) {
+    const kg = doc.createElement('Key_Group');
+    kg.setAttribute('Name', `XPK${tableName}`);
+    kg.setAttribute('Type', 'PK');
+    pkCols.forEach(pk => {
+      const ka = doc.createElement('Key_Attribute');
+      ka.setAttribute('Name', pk.name);
+      kg.appendChild(ka);
+    });
+    entity.appendChild(kg);
+  }
+  root.appendChild(entity);
+}
+
+/* ==================== erwin-dm-v9 emission ==================== */
+
+function addEntityDMv9(doc, tableName, cols) {
+  const container = findDMv9Container(doc);
+  if (!container) {
+    alert('Could not locate the entity container in this DM-v9 file. Aborting.');
+    return;
+  }
+
+  const newId = () => `{${crypto.randomUUID().toUpperCase()}}+00000000`;
+  const colIds = cols.map(() => newId());
+  const entityId = newId();
+
+  const entity = doc.createElementNS(NS.emx, 'EMX:Entity');
+  entity.setAttribute('id', entityId);
+  entity.setAttribute('name', tableName);
+
+  // -- EntityProps
+  const props = doc.createElementNS(NS.emx, 'EMX:EntityProps');
+  props.appendChild(emxEl(doc, 'Name', tableName));
+  props.appendChild(emxEl(doc, 'Long_Id', entityId));
+  props.appendChild(emxEl(doc, 'Type', '1'));
+  props.appendChild(emxEl(doc, 'Physical_Name', tableName, { Derived: 'Y' }));
+  props.appendChild(emxEl(doc, 'Dependent_Objects_Ref_Array', null, { ReadOnly: 'Y', Derived: 'Y' }));
+  props.appendChild(emxEl(doc, 'Do_Not_Generate', 'false', { Derived: 'Y' }));
+
+  const attrOrder = doc.createElementNS(NS.emx, 'EMX:Attributes_Order_Ref_Array');
+  colIds.forEach((cid, i) => {
+    const ref = doc.createElementNS(NS.emx, 'EMX:Attributes_Order_Ref');
+    ref.setAttribute('index', String(i));
+    ref.textContent = cid;
+    attrOrder.appendChild(ref);
+  });
+  props.appendChild(attrOrder);
+
+  const physOrder = doc.createElementNS(NS.emx, 'EMX:Physical_Columns_Order_Ref_Array');
+  colIds.forEach((cid, i) => {
+    const ref = doc.createElementNS(NS.emx, 'EMX:Physical_Columns_Order_Ref');
+    ref.setAttribute('index', String(i));
+    ref.textContent = cid;
+    physOrder.appendChild(ref);
+  });
+  props.appendChild(physOrder);
+
+  entity.appendChild(props);
+
+  // -- Attribute_Groups
+  const attrGroups = doc.createElementNS(NS.emx, 'EMX:Attribute_Groups');
+  cols.forEach((col, i) => {
+    const attr = doc.createElementNS(NS.emx, 'EMX:Attribute');
+    attr.setAttribute('id', colIds[i]);
+    attr.setAttribute('name', col.name);
+
+    const ap = doc.createElementNS(NS.emx, 'EMX:AttributeProps');
+    ap.appendChild(emxEl(doc, 'Name', col.name));
+    ap.appendChild(emxEl(doc, 'Long_Id', colIds[i]));
+    ap.appendChild(emxEl(doc, 'Physical_Name', col.name, { Derived: 'Y' }));
+    ap.appendChild(emxEl(doc, 'Physical_Data_Type', formatDatatype(col), { Derived: 'Y' }));
+    ap.appendChild(emxEl(doc, 'Nullable', col.nullable ? 'true' : 'false'));
+
+    const domainId = pickDomain(col);
+    if (domainId) {
+      ap.appendChild(emxEl(doc, 'Parent_Domain_Ref', domainId));
+    }
+    attr.appendChild(ap);
+    attrGroups.appendChild(attr);
+  });
+  entity.appendChild(attrGroups);
+
+  // -- Key groups (PK)
+  const pkCols = cols.filter(c => c.pk);
+  if (pkCols.length) {
+    const kgGroups = doc.createElementNS(NS.emx, 'EMX:Key_Group_Groups');
+    const kgId = newId();
+    const kg = doc.createElementNS(NS.emx, 'EMX:Key_Group');
+    kg.setAttribute('id', kgId);
+    kg.setAttribute('name', `XPK${tableName}`);
+
+    const kgp = doc.createElementNS(NS.emx, 'EMX:Key_GroupProps');
+    kgp.appendChild(emxEl(doc, 'Name', `XPK${tableName}`));
+    kgp.appendChild(emxEl(doc, 'Long_Id', kgId));
+    kgp.appendChild(emxEl(doc, 'Key_Group_Type', '1'));
+
+    const kmOrder = doc.createElementNS(NS.emx, 'EMX:Key_Group_Members_Order_Ref_Array');
+    const kmIds = pkCols.map(() => newId());
+    pkCols.forEach((_, i) => {
+      const ref = doc.createElementNS(NS.emx, 'EMX:Key_Group_Members_Order_Ref');
+      ref.setAttribute('index', String(i));
+      ref.textContent = kmIds[i];
+      kmOrder.appendChild(ref);
+    });
+    kgp.appendChild(kmOrder);
+    kg.appendChild(kgp);
+
+    const kmGroups = doc.createElementNS(NS.emx, 'EMX:Key_Group_Member_Groups');
+    pkCols.forEach((pk, i) => {
+      const km = doc.createElementNS(NS.emx, 'EMX:Key_Group_Member');
+      km.setAttribute('id', kmIds[i]);
+      const kmp = doc.createElementNS(NS.emx, 'EMX:Key_Group_MemberProps');
+      kmp.appendChild(emxEl(doc, 'Long_Id', kmIds[i]));
+      const ar = doc.createElementNS(NS.emx, 'EMX:Attribute_Ref');
+      ar.textContent = colIds[cols.indexOf(pk)];
+      kmp.appendChild(ar);
+      km.appendChild(kmp);
+      kmGroups.appendChild(km);
+    });
+    kg.appendChild(kmGroups);
+    kgGroups.appendChild(kg);
+    entity.appendChild(kgGroups);
+  }
+
+  container.appendChild(entity);
+}
+
+function emxEl(doc, name, text, attrs) {
+  const el = doc.createElementNS(NS.emx, 'EMX:' + name);
+  if (text !== null && text !== undefined) el.textContent = text;
+  if (attrs) for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function findDMv9Container(doc) {
+  // Expected path: /erwin/UDP_Definition_Groups/Entity_Groups
+  const udp = doc.getElementsByTagNameNS(NS.dm, 'UDP_Definition_Groups')[0]
+           || doc.getElementsByTagName('UDP_Definition_Groups')[0];
+  if (udp) {
+    const eg = udp.getElementsByTagNameNS(NS.dm, 'Entity_Groups')[0]
+            || udp.getElementsByTagName('Entity_Groups')[0];
+    if (eg) return eg;
+  }
+  // Fallback: parent of the first existing entity
+  const first = doc.getElementsByTagNameNS(NS.emx, 'Entity')[0];
+  return first ? first.parentNode : null;
+}
+
+function pickDomain(col) {
+  if (!state.domainMap || !state.domainMap.size) return null;
+  let wants = [];
+  if (col.type === 'DATE')      wants = ['DATE', 'Date', 'Datetime'];
+  else if (col.type === 'TIMESTAMP') wants = ['Timestamp', 'TIMESTAMP_TYPE2', 'Datetime', 'DATE'];
+  else if (col.type === 'NUMBER')    wants = ['NUMBER', 'Number', 'Amount', 'Numeric'];
+  else if (col.type === 'VARCHAR2')  wants = ['VARCHAR2', 'Code_Alphanumeric_Long', 'String'];
+  else if (col.type === 'CHAR')      wants = ['CHAR', 'Code_Alphanumeric_Short', 'String'];
+  else if (col.type === 'CLOB')      wants = ['CLOB', 'Text_Long_Description', 'String'];
+  wants.push('<default>', '<root>');
+  for (const n of wants) if (state.domainMap.has(n)) return state.domainMap.get(n);
+  return state.domainMap.values().next().value || null;
+}
+
+function formatDatatype(col) {
+  if (col.type === 'VARCHAR2' || col.type === 'CHAR') {
+    return col.size ? `${col.type}(${col.size})` : col.type;
+  }
+  if (col.type === 'NUMBER') {
+    if (col.size && col.scale) return `NUMBER(${col.size},${col.scale})`;
+    if (col.size) return `NUMBER(${col.size})`;
+    return 'NUMBER';
+  }
+  return col.type;
+}
+</script>
+</body>
+</html>
