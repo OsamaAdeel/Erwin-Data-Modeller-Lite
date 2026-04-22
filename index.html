@@ -45,6 +45,10 @@
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
     }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
 
     /* ========= Hero (navy banner) ========= */
     .hero {
@@ -119,10 +123,12 @@
     /* ========= Page container ========= */
     .container {
       max-width: 1080px;
+      width: 100%;
       margin: -40px auto 0;
-      padding: 0 32px 0;
+      padding: 0 32px 40px;
       position: relative;
       z-index: 2;
+      flex: 1;
     }
 
     /* ========= Section cards ========= */
