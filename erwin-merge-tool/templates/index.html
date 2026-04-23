@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>erwin Model Merge</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A0E27'/%3E%3Cpath d='M10 9H22V13H14V16H21V20H14V23H22V27H10Z' fill='%232D6BFF'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">E</div>
+      <div>
+        <div class="brand-title">erwin Model Merge</div>
+        <div class="brand-sub">merge tables &amp; columns from one erwin-dm-v9 XML into another</div>
+      </div>
+    </div>
+    <button id="reset-btn" class="btn btn-ghost" type="button" title="Clear loaded files">Start over</button>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ================================================================ -->
+    <!-- Step 1 — Load files                                               -->
+    <!-- ================================================================ -->
+    <section class="card" id="step-load">
+      <div class="card-head">
+        <div class="step-num">1</div>
+        <div>
+          <h2>Load both models</h2>
+          <p class="muted">Drop or click to pick an <code>erwin-dm-v9</code> XML file on each side.</p>
+        </div>
+      </div>
+
+      <div class="drop-grid">
+        <div class="drop-slot" data-role="source">
+          <div class="drop-role">SOURCE</div>
+          <div class="drop-sub">Model to pull tables &amp; columns <b>FROM</b></div>
+          <div class="drop-zone" id="drop-source" tabindex="0">
+            <div class="drop-hint">
+              <div class="drop-icon">↓</div>
+              <div>Drop XML here or <button class="linklike" type="button" data-pick="source">browse</button></div>
+            </div>
+            <input type="file" accept=".xml,application/xml,text/xml" hidden data-file-input="source">
+          </div>
+          <div class="drop-loaded hidden" data-loaded="source">
+            <div class="loaded-name" data-slot="name"></div>
+            <div class="loaded-meta" data-slot="meta"></div>
+          </div>
+          <div class="drop-error hidden" data-error="source"></div>
+        </div>
+
+        <div class="drop-slot" data-role="target">
+          <div class="drop-role">TARGET</div>
+          <div class="drop-sub">Model to merge additions <b>INTO</b></div>
+          <div class="drop-zone" id="drop-target" tabindex="0">
+            <div class="drop-hint">
+              <div class="drop-icon">↓</div>
+              <div>Drop XML here or <button class="linklike" type="button" data-pick="target">browse</button></div>
+            </div>
+            <input type="file" accept=".xml,application/xml,text/xml" hidden data-file-input="target">
+          </div>
+          <div class="drop-loaded hidden" data-loaded="target">
+            <div class="loaded-name" data-slot="name"></div>
+            <div class="loaded-meta" data-slot="meta"></div>
+          </div>
+          <div class="drop-error hidden" data-error="target"></div>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button id="compute-btn" class="btn btn-primary" type="button" disabled>Compute merge plan</button>
+        <span id="compute-hint" class="muted">Load both files to continue.</span>
+      </div>
+    </section>
+
+    <!-- ================================================================ -->
+    <!-- Step 2 — Plan summary                                             -->
+    <!-- ================================================================ -->
+    <section class="card hidden" id="step-plan">
+      <div class="card-head">
+        <div class="step-num">2</div>
+        <div>
+          <h2>Review the diff</h2>
+          <p class="muted">Source → Target. We only add; we never modify or remove anything already in target.</p>
+        </div>
+      </div>
+
+      <div id="noop-banner" class="banner banner-green hidden">
+        ✓ Target already contains everything in source — nothing to merge.
+      </div>
+
+      <div class="summary-grid">
+        <div class="tile">
+          <div class="tile-num" id="tile-tables">0</div>
+          <div class="tile-label">Missing tables</div>
+        </div>
+        <div class="tile">
+          <div class="tile-num" id="tile-columns">0</div>
+          <div class="tile-label">Missing columns</div>
+        </div>
+        <div class="tile tile-warn">
+          <div class="tile-num" id="tile-conflicts">0</div>
+          <div class="tile-label">Conflicts</div>
+        </div>
+      </div>
+
+      <!-- Two-pane picker ------------------------------------------------ -->
+      <div class="picker-grid">
+        <div class="pane" data-pane="pending">
+          <div class="pane-head">
+            <h3>SOURCE (pending)</h3>
+            <div class="pane-counts" id="counts-pending"></div>
+          </div>
+          <div class="pane-body" id="pane-pending" tabindex="0"></div>
+          <div class="pane-actions">
+            <button class="btn btn-outline" type="button" id="move-all-right">→ Move all</button>
+          </div>
+        </div>
+
+        <div class="picker-divider" aria-hidden="true">
+          <button class="arrow-btn" type="button" id="arrow-right" title="Move selected to target (→ or Enter)">→</button>
+          <button class="arrow-btn" type="button" id="arrow-left"  title="Move selected back (← or Shift+Enter)">←</button>
+        </div>
+
+        <div class="pane" data-pane="staged">
+          <div class="pane-head">
+            <h3>TARGET (will add)</h3>
+            <div class="pane-counts" id="counts-staged"></div>
+          </div>
+          <div class="pane-body" id="pane-staged" tabindex="0"></div>
+          <div class="pane-actions">
+            <button class="btn btn-outline" type="button" id="move-all-left">← Unselect all</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conflicts ------------------------------------------------------ -->
+      <div class="conflicts-section">
+        <label class="conflict-toggle">
+          <input type="checkbox" id="show-conflicts">
+          Show conflicts (advanced)
+        </label>
+        <div id="conflicts-body" class="conflicts-body hidden"></div>
+      </div>
+
+      <div class="card-actions">
+        <button id="execute-btn" class="btn btn-primary" type="button" disabled>Execute merge</button>
+        <button id="back-btn" class="btn btn-ghost" type="button">Back</button>
+      </div>
+    </section>
+
+    <!-- ================================================================ -->
+    <!-- Step 3 — Result                                                   -->
+    <!-- ================================================================ -->
+    <section class="card hidden" id="step-result">
+      <div class="card-head">
+        <div class="step-num">3</div>
+        <div>
+          <h2>Merge complete</h2>
+          <p class="muted">Download the merged XML and the report.</p>
+        </div>
+      </div>
+
+      <div id="result-banner" class="banner banner-green"></div>
+
+      <div class="result-actions">
+        <a id="download-xml"    class="btn btn-primary" href="#" download>⬇ Download merged XML</a>
+        <a id="download-report" class="btn btn-outline" href="#" download>⬇ Download report</a>
+      </div>
+
+      <details class="report-details">
+        <summary>Actions &amp; warnings</summary>
+        <pre id="result-log"></pre>
+      </details>
+
+      <div class="card-actions">
+        <button id="another-btn" class="btn btn-ghost" type="button">Merge another pair</button>
+      </div>
+    </section>
+
+    <!-- Small keyboard-shortcut legend -------------------------------- -->
+    <footer class="legend">
+      <span><kbd>→</kbd> / <kbd>Enter</kbd> move right</span>
+      <span><kbd>←</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd> move left</span>
+      <span><kbd>Ctrl</kbd>+<kbd>A</kbd> select all in focused pane</span>
+    </footer>
+
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
