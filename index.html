@@ -32,6 +32,13 @@
 
   <div class="container">
 
+    <div class="tab-bar" role="tablist">
+      <button class="tab-btn active" role="tab" aria-selected="true" data-tab="add">Add Tables</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="merge">Merge Models</button>
+    </div>
+
+    <div class="tab-panel" data-panel="add">
+
     <!-- §1 Upload -->
     <section id="upload-section">
       <div class="section-label"><span class="section-num">1</span>Load repository</div>
@@ -150,6 +157,71 @@
         Generate updated XML
       </button>
     </section>
+
+    </div><!-- /tab-panel add -->
+
+    <div class="tab-panel hidden" data-panel="merge">
+
+      <!-- §M1 Load source & target -->
+      <section id="merge-load-section">
+        <div class="section-label"><span class="section-num">1</span>Load source &amp; target</div>
+        <div class="merge-drop-grid">
+          <div class="merge-drop" id="merge-source-drop" data-slot="source">
+            <div class="merge-drop-role">SOURCE</div>
+            <div class="drop-zone-title">Drop <em>source</em> XML</div>
+            <div class="drop-zone-sub">Model to pull tables &amp; columns FROM</div>
+            <input type="file" id="merge-source-input" accept=".xml,text/xml,application/xml">
+            <div class="merge-drop-loaded hidden" id="merge-source-loaded">
+              <div class="info-label">Loaded</div>
+              <div class="info-value serif" id="merge-source-name">—</div>
+              <div class="info-value" id="merge-source-count">—</div>
+            </div>
+          </div>
+          <div class="merge-drop" id="merge-target-drop" data-slot="target">
+            <div class="merge-drop-role">TARGET</div>
+            <div class="drop-zone-title">Drop <em>target</em> XML</div>
+            <div class="drop-zone-sub">Model to merge additions INTO</div>
+            <input type="file" id="merge-target-input" accept=".xml,text/xml,application/xml">
+            <div class="merge-drop-loaded hidden" id="merge-target-loaded">
+              <div class="info-label">Loaded</div>
+              <div class="info-value serif" id="merge-target-name">—</div>
+              <div class="info-value" id="merge-target-count">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="merge-load-error hidden" id="merge-load-error"></div>
+        <button class="btn btn-primary" id="merge-compute-btn" disabled>
+          Compute merge plan
+        </button>
+      </section>
+
+      <!-- §M2 Review plan -->
+      <section id="merge-plan-section" class="hidden">
+        <div class="section-label"><span class="section-num">2</span>Review merge plan</div>
+        <div class="merge-plan-summary" id="merge-plan-summary"></div>
+        <div class="merge-plan-body" id="merge-plan-body"></div>
+        <div class="merge-plan-actions">
+          <button class="btn" id="merge-cancel-btn">Back</button>
+          <button class="btn btn-primary" id="merge-execute-btn">Execute merge</button>
+        </div>
+      </section>
+
+      <!-- §M3 Results -->
+      <section id="merge-result-section" class="hidden">
+        <div class="section-label"><span class="section-num">3</span>Download results</div>
+        <div class="merge-result-body" id="merge-result-body"></div>
+        <details class="merge-report-panel" id="merge-report-panel" open>
+          <summary>Merge report</summary>
+          <pre id="merge-report-content"></pre>
+        </details>
+        <div class="merge-result-actions">
+          <button class="btn btn-primary" id="merge-download-xml-btn">Download merged XML</button>
+          <button class="btn" id="merge-download-report-btn">Download report</button>
+        </div>
+      </section>
+
+    </div><!-- /tab-panel merge -->
+
   </div>
 
   <footer>

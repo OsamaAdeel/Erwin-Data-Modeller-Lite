@@ -1007,6 +1007,10 @@ function findDMv9Container(doc) {
 
 function pickDomain(col) {
   if (!state.domainMap || !state.domainMap.size) return null;
+  // Merge flow: prefer an explicit domain name carried on the column spec.
+  if (col.domainName && state.domainMap.has(col.domainName)) {
+    return state.domainMap.get(col.domainName);
+  }
   let wants = [];
   if (col.type === 'DATE') wants = ['DATE', 'Date', 'Datetime'];
   else if (col.type === 'TIMESTAMP') wants = ['Timestamp', 'TIMESTAMP_TYPE2', 'Datetime', 'DATE'];
@@ -1020,6 +1024,8 @@ function pickDomain(col) {
 }
 
 function formatDatatype(col) {
+  // Merge flow carries the source's verbatim physical datatype string.
+  if (col.physDataType) return col.physDataType;
   if (col.type === 'VARCHAR2' || col.type === 'CHAR') {
     return col.size ? `${col.type}(${col.size})` : col.type;
   }
@@ -1030,3 +1036,637 @@ function formatDatatype(col) {
   }
   return col.type;
 }
+
+/* ==================== Tab switching ==================== */
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      const active = b.dataset.tab === target;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.classList.toggle('hidden', p.dataset.panel !== target);
+    });
+  });
+});
+
+/* ==================== Merge: state ==================== */
+
+const mergeState = {
+  source: null,       // { doc, fileName, entities, domainMap, domainByIdName, variant }
+  target: null,
+  plan: null,         // { tablesToAdd, columnsToAdd, conflicts }
+  mergedXml: null,
+  mergedXmlName: null,
+  report: null
+};
+
+let mergePlanIdCounter = 0;
+function nextMergePlanId() { return `m${++mergePlanIdCounter}`; }
+
+/* ==================== Merge: parsing helpers ==================== */
+
+function readMergeDoc(text, slot, fileName) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.querySelector('parsererror')) {
+    throw new Error(`${slot.toUpperCase()}: XML parse error — file is not well-formed.`);
+  }
+  const variant = detectVariant(doc.documentElement);
+  if (variant !== 'erwin-dm-v9') {
+    throw new Error(`${slot.toUpperCase()} is ${variant}. Merge requires both files to be erwin-dm-v9.`);
+  }
+  const entities = readV9Entities(doc);
+  const domainMap = collectDomainMap(doc);
+  const domainByIdName = reverseDomainMap(doc);
+  return { doc, fileName, entities, domainMap, domainByIdName, variant };
+}
+
+function readV9Entities(doc) {
+  const out = new Map();
+  const entities = doc.getElementsByTagNameNS(NS.emx, 'Entity');
+  for (const e of entities) {
+    const name = e.getAttribute('name') || '';
+    if (!name) continue;
+    const columns = readV9Columns(e);
+    const columnsById = new Map(columns.map(c => [c.id, c]));
+    const pkColumnNames = readV9Pk(e, columnsById);
+    out.set(name.toUpperCase(), { name, entityEl: e, columns, columnsById, pkColumnNames });
+  }
+  return out;
+}
+
+function readV9Columns(entityEl) {
+  const attrGroups = entityEl.getElementsByTagNameNS(NS.emx, 'Attribute_Groups')[0];
+  if (!attrGroups) return [];
+  const attrs = Array.from(attrGroups.children)
+    .filter(c => c.localName === 'Attribute' && c.namespaceURI === NS.emx);
+  return attrs.map(a => {
+    const id = a.getAttribute('id') || '';
+    const name = a.getAttribute('name') || '';
+    const props = a.getElementsByTagNameNS(NS.emx, 'AttributeProps')[0];
+    const physDataType = emxText(props, 'Physical_Data_Type');
+    const nullableRaw = emxText(props, 'Nullable');
+    const nullable = nullableRaw.toLowerCase() !== 'false';
+    const domainId = emxText(props, 'Parent_Domain_Ref');
+    return { id, name, physDataType, nullable, domainId };
+  });
+}
+
+function readV9Pk(entityEl, columnsById) {
+  const kgg = entityEl.getElementsByTagNameNS(NS.emx, 'Key_Group_Groups')[0];
+  if (!kgg) return [];
+  const kgs = kgg.getElementsByTagNameNS(NS.emx, 'Key_Group');
+  for (const kg of kgs) {
+    const props = kg.getElementsByTagNameNS(NS.emx, 'Key_GroupProps')[0];
+    if (emxText(props, 'Key_Group_Type') !== '1') continue;
+    const members = kg.getElementsByTagNameNS(NS.emx, 'Key_Group_Member');
+    const names = [];
+    for (const m of members) {
+      const mp = m.getElementsByTagNameNS(NS.emx, 'Key_Group_MemberProps')[0];
+      const ar = mp ? mp.getElementsByTagNameNS(NS.emx, 'Attribute_Ref')[0] : null;
+      if (!ar) continue;
+      const col = columnsById.get(ar.textContent.trim());
+      if (col) names.push(col.name);
+    }
+    return names;
+  }
+  return [];
+}
+
+function reverseDomainMap(doc) {
+  const map = new Map();
+  const domains = doc.getElementsByTagNameNS(NS.emx, 'Domain');
+  for (const d of domains) {
+    const id = d.getAttribute('id');
+    const name = d.getAttribute('name');
+    if (id && name) map.set(id, name);
+  }
+  return map;
+}
+
+function emxText(parent, tag) {
+  if (!parent) return '';
+  const el = parent.getElementsByTagNameNS(NS.emx, tag)[0];
+  return el ? el.textContent.trim() : '';
+}
+
+/* ==================== Merge: plan computation ==================== */
+
+function computeMergePlan() {
+  const src = mergeState.source;
+  const tgt = mergeState.target;
+  const plan = { tablesToAdd: [], columnsToAdd: [], conflicts: [] };
+
+  for (const [nameU, srcEnt] of src.entities) {
+    const tgtEnt = tgt.entities.get(nameU);
+    if (!tgtEnt) {
+      plan.tablesToAdd.push({
+        planId: nextMergePlanId(),
+        name: srcEnt.name,
+        sourceEntity: srcEnt,
+        pkColumnNames: srcEnt.pkColumnNames
+      });
+      for (const col of srcEnt.columns) {
+        const dn = col.domainId ? src.domainByIdName.get(col.domainId) : null;
+        if (dn && !tgt.domainMap.has(dn)) {
+          plan.conflicts.push({
+            message: `Domain '${dn}' used by SOURCE.${srcEnt.name}.${col.name} is missing in TARGET — column will be added without a domain reference`
+          });
+        }
+      }
+    } else {
+      if (srcEnt.name !== tgtEnt.name) {
+        plan.conflicts.push({
+          message: `Table '${srcEnt.name}' (source) vs '${tgtEnt.name}' (target) — same name, case only; treating as MATCH`
+        });
+      }
+
+      const tgtColsByNameU = new Map(tgtEnt.columns.map(c => [c.name.toUpperCase(), c]));
+      const newColumns = [];
+      for (const srcCol of srcEnt.columns) {
+        const tgtCol = tgtColsByNameU.get(srcCol.name.toUpperCase());
+        const srcDomainName = srcCol.domainId ? src.domainByIdName.get(srcCol.domainId) : null;
+        if (!tgtCol) {
+          const isPkInSrc = srcEnt.pkColumnNames.some(n => n.toUpperCase() === srcCol.name.toUpperCase());
+          if (isPkInSrc) {
+            plan.conflicts.push({
+              message: `SOURCE.${srcEnt.name}.${srcCol.name} is part of source PK; adding it as PK would change TARGET's PK — will be added as a non-PK column`
+            });
+          }
+          if (srcDomainName && !tgt.domainMap.has(srcDomainName)) {
+            plan.conflicts.push({
+              message: `Domain '${srcDomainName}' used by SOURCE.${srcEnt.name}.${srcCol.name} is missing in TARGET — column added without domain reference`
+            });
+          }
+          newColumns.push({
+            planId: nextMergePlanId(),
+            name: srcCol.name,
+            physDataType: srcCol.physDataType,
+            nullable: srcCol.nullable,
+            domainName: srcDomainName
+          });
+        } else {
+          const diffs = [];
+          if (srcCol.physDataType && tgtCol.physDataType && srcCol.physDataType !== tgtCol.physDataType) {
+            diffs.push(`datatype (source=${srcCol.physDataType}, target=${tgtCol.physDataType})`);
+          }
+          if (srcCol.nullable !== tgtCol.nullable) {
+            diffs.push(`nullability (source=${srcCol.nullable ? 'NULL' : 'NOT NULL'}, target=${tgtCol.nullable ? 'NULL' : 'NOT NULL'})`);
+          }
+          const tgtDomainName = tgtCol.domainId ? tgt.domainByIdName.get(tgtCol.domainId) : null;
+          if (srcDomainName && tgtDomainName && srcDomainName !== tgtDomainName) {
+            diffs.push(`domain (source=${srcDomainName}, target=${tgtDomainName})`);
+          }
+          if (diffs.length) {
+            plan.conflicts.push({
+              message: `${srcEnt.name}.${srcCol.name} differs: ${diffs.join('; ')} — skipped (target is authoritative)`
+            });
+          }
+        }
+      }
+
+      const srcPkU = srcEnt.pkColumnNames.map(n => n.toUpperCase()).sort();
+      const tgtPkU = tgtEnt.pkColumnNames.map(n => n.toUpperCase()).sort();
+      const pkDiffers = srcPkU.length && (
+        srcPkU.length !== tgtPkU.length ||
+        srcPkU.some((n, i) => n !== tgtPkU[i])
+      );
+      if (pkDiffers) {
+        plan.conflicts.push({
+          message: `${srcEnt.name}: source PK is (${srcEnt.pkColumnNames.join(', ')}), target PK is (${tgtEnt.pkColumnNames.join(', ') || 'none'}) — PK change skipped`
+        });
+      }
+
+      if (newColumns.length) {
+        plan.columnsToAdd.push({
+          targetTableName: tgtEnt.name,
+          targetEntity: tgtEnt,
+          newColumns
+        });
+      }
+    }
+  }
+
+  return plan;
+}
+
+/* ==================== Merge: plan rendering ==================== */
+
+function renderMergePlan(plan) {
+  const body = document.getElementById('merge-plan-body');
+  const summary = document.getElementById('merge-plan-summary');
+  body.innerHTML = '';
+
+  const totalNewCols = plan.columnsToAdd.reduce((s, g) => s + g.newColumns.length, 0);
+  summary.innerHTML =
+    `<div class="merge-summary-stat"><div class="stat-num">${plan.tablesToAdd.length}</div><div class="stat-label">Tables to add</div></div>` +
+    `<div class="merge-summary-stat"><div class="stat-num">${totalNewCols}</div><div class="stat-label">Columns to add</div></div>` +
+    `<div class="merge-summary-stat"><div class="stat-num">${plan.conflicts.length}</div><div class="stat-label">Conflicts / skips</div></div>` +
+    `<div class="merge-summary-stat"><div class="stat-num">${mergeState.target.entities.size}</div><div class="stat-label">Target entities</div></div>`;
+
+  if (plan.tablesToAdd.length) {
+    const det = document.createElement('details');
+    det.className = 'merge-plan-group';
+    det.open = true;
+    const sum = document.createElement('summary');
+    sum.textContent = `+ ${plan.tablesToAdd.length} table(s) to ADD`;
+    det.appendChild(sum);
+    const items = document.createElement('div');
+    items.className = 'merge-plan-items';
+    for (const tbl of plan.tablesToAdd) {
+      const label = document.createElement('label');
+      label.className = 'merge-plan-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.dataset.planId = tbl.planId;
+      label.appendChild(cb);
+      const main = document.createElement('div');
+      main.className = 'merge-plan-item-main';
+      const title = document.createElement('div');
+      title.className = 'merge-plan-item-title';
+      title.textContent = `${tbl.name}  (${tbl.sourceEntity.columns.length} columns · PK: ${tbl.pkColumnNames.join(', ') || 'none'})`;
+      main.appendChild(title);
+      const cols = document.createElement('div');
+      cols.className = 'merge-plan-item-cols';
+      cols.innerHTML = tbl.sourceEntity.columns.map(c => {
+        const isPk = tbl.pkColumnNames.some(n => n.toUpperCase() === c.name.toUpperCase());
+        const pkMark = isPk ? ' <span class="pk">(PK)</span>' : '';
+        const nullMark = c.nullable ? 'NULL' : 'NOT NULL';
+        return `• ${escapeHtml(c.name)}  ${escapeHtml(c.physDataType || '?')}  ${nullMark}${pkMark}`;
+      }).join('<br>');
+      main.appendChild(cols);
+      label.appendChild(main);
+      items.appendChild(label);
+    }
+    det.appendChild(items);
+    body.appendChild(det);
+  }
+
+  if (plan.columnsToAdd.length) {
+    const det = document.createElement('details');
+    det.className = 'merge-plan-group';
+    det.open = true;
+    const sum = document.createElement('summary');
+    sum.textContent = `~ ${totalNewCols} column(s) to ADD to existing tables`;
+    det.appendChild(sum);
+    const items = document.createElement('div');
+    items.className = 'merge-plan-items';
+    for (const group of plan.columnsToAdd) {
+      const sub = document.createElement('div');
+      sub.className = 'merge-plan-group-subhead';
+      sub.textContent = group.targetTableName;
+      items.appendChild(sub);
+      for (const col of group.newColumns) {
+        const label = document.createElement('label');
+        label.className = 'merge-plan-item nested';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.dataset.planId = col.planId;
+        label.appendChild(cb);
+        const main = document.createElement('div');
+        main.className = 'merge-plan-item-main';
+        const line = document.createElement('div');
+        line.className = 'merge-plan-item-cols';
+        const nullMark = col.nullable ? 'NULL' : 'NOT NULL';
+        line.textContent = `+ ${col.name}  ${col.physDataType || '?'}  ${nullMark}  domain=${col.domainName || '—'}`;
+        main.appendChild(line);
+        label.appendChild(main);
+        items.appendChild(label);
+      }
+    }
+    det.appendChild(items);
+    body.appendChild(det);
+  }
+
+  if (plan.conflicts.length) {
+    const det = document.createElement('details');
+    det.className = 'merge-plan-group';
+    det.open = plan.tablesToAdd.length + plan.columnsToAdd.length === 0;
+    const sum = document.createElement('summary');
+    sum.textContent = `! ${plan.conflicts.length} conflict(s) / skip(s) — NOT merged automatically`;
+    det.appendChild(sum);
+    const ul = document.createElement('ul');
+    ul.className = 'merge-conflict-list';
+    for (const c of plan.conflicts) {
+      const li = document.createElement('li');
+      li.className = 'merge-conflict-item';
+      const span = document.createElement('span');
+      span.textContent = c.message;
+      li.appendChild(span);
+      ul.appendChild(li);
+    }
+    det.appendChild(ul);
+    body.appendChild(det);
+  }
+
+  if (!plan.tablesToAdd.length && !plan.columnsToAdd.length && !plan.conflicts.length) {
+    const empty = document.createElement('div');
+    empty.className = 'merge-result-body';
+    empty.textContent = '✓ Target already contains everything in source — nothing to merge.';
+    body.appendChild(empty);
+  }
+}
+
+function isMergeItemChecked(planId) {
+  const cb = document.querySelector(`input[type="checkbox"][data-plan-id="${planId}"]`);
+  return !!(cb && cb.checked);
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, ch =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])
+  );
+}
+
+/* ==================== Merge: execute ==================== */
+
+function executeMergePlan() {
+  const tgt = mergeState.target;
+  const src = mergeState.source;
+  const executed = {
+    tablesAdded: [],
+    columnsAdded: [],
+    conflicts: mergeState.plan.conflicts.slice()
+  };
+
+  const savedDomainMap = state.domainMap;
+  state.domainMap = tgt.domainMap;
+
+  try {
+    for (const tbl of mergeState.plan.tablesToAdd) {
+      if (!isMergeItemChecked(tbl.planId)) continue;
+      if (tgt.entities.has(tbl.name.toUpperCase())) {
+        throw new Error(`Table ${tbl.name} already exists in the ERwin model`);
+      }
+      const cols = tbl.sourceEntity.columns.map(sc => {
+        const domainName = sc.domainId ? src.domainByIdName.get(sc.domainId) : null;
+        const isPk = tbl.pkColumnNames.some(n => n.toUpperCase() === sc.name.toUpperCase());
+        return {
+          name: sc.name,
+          physDataType: sc.physDataType,
+          nullable: sc.nullable,
+          pk: isPk,
+          domainName
+        };
+      });
+      addEntityDMv9(tgt.doc, tbl.name, cols);
+      tgt.entities.set(tbl.name.toUpperCase(), { name: tbl.name, columns: [], pkColumnNames: [] });
+      executed.tablesAdded.push({ name: tbl.name, columnCount: cols.length });
+    }
+
+    for (const group of mergeState.plan.columnsToAdd) {
+      const checked = group.newColumns.filter(c => isMergeItemChecked(c.planId));
+      if (!checked.length) continue;
+      for (const spec of checked) {
+        appendColumnToEntity(tgt.doc, group.targetEntity.entityEl, spec, tgt.domainMap);
+      }
+      executed.columnsAdded.push({
+        table: group.targetTableName,
+        columns: checked.map(c => ({
+          name: c.name,
+          physDataType: c.physDataType,
+          nullable: c.nullable,
+          domainName: c.domainName
+        }))
+      });
+    }
+  } finally {
+    state.domainMap = savedDomainMap;
+  }
+
+  let xml = new XMLSerializer().serializeToString(tgt.doc);
+  if (!xml.startsWith('<?xml')) xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
+  const reparse = new DOMParser().parseFromString(xml, 'application/xml');
+  if (reparse.querySelector('parsererror')) {
+    throw new Error('Merged XML failed validation on re-parse. Output discarded.');
+  }
+
+  mergeState.mergedXml = xml;
+  mergeState.mergedXmlName = outputFilename(tgt.fileName);
+  mergeState.report = buildMergeReport(executed);
+  return executed;
+}
+
+function appendColumnToEntity(doc, entityEl, colSpec, targetDomainMap) {
+  const newColId = `{${crypto.randomUUID().toUpperCase()}}+00000000`;
+  const attr = doc.createElementNS(NS.emx, 'EMX:Attribute');
+  attr.setAttribute('id', newColId);
+  attr.setAttribute('name', colSpec.name);
+
+  const ap = doc.createElementNS(NS.emx, 'EMX:AttributeProps');
+  ap.appendChild(emxEl(doc, 'Name', colSpec.name));
+  ap.appendChild(emxEl(doc, 'Long_Id', newColId));
+  ap.appendChild(emxEl(doc, 'Physical_Name', colSpec.name, { Derived: 'Y' }));
+  ap.appendChild(emxEl(doc, 'Physical_Data_Type', colSpec.physDataType || '', { Derived: 'Y' }));
+  ap.appendChild(emxEl(doc, 'Nullable', colSpec.nullable ? 'true' : 'false'));
+  if (colSpec.domainName && targetDomainMap.has(colSpec.domainName)) {
+    ap.appendChild(emxEl(doc, 'Parent_Domain_Ref', targetDomainMap.get(colSpec.domainName)));
+  }
+  attr.appendChild(ap);
+
+  const attrGroups = entityEl.getElementsByTagNameNS(NS.emx, 'Attribute_Groups')[0];
+  if (!attrGroups) {
+    throw new Error(`Entity ${entityEl.getAttribute('name')} is missing Attribute_Groups`);
+  }
+  attrGroups.appendChild(attr);
+
+  const props = entityEl.getElementsByTagNameNS(NS.emx, 'EntityProps')[0];
+  if (!props) {
+    throw new Error(`Entity ${entityEl.getAttribute('name')} is missing EntityProps`);
+  }
+  appendOrderRef(doc, props, 'Attributes_Order_Ref_Array', 'Attributes_Order_Ref', newColId);
+  appendOrderRef(doc, props, 'Physical_Columns_Order_Ref_Array', 'Physical_Columns_Order_Ref', newColId);
+  appendOrderRefIfExists(doc, props, 'Columns_Order_Ref_Array', 'Columns_Order_Ref', newColId);
+}
+
+function appendOrderRef(doc, propsEl, arrayTag, refTag, colId) {
+  let arr = propsEl.getElementsByTagNameNS(NS.emx, arrayTag)[0];
+  if (!arr) {
+    arr = doc.createElementNS(NS.emx, 'EMX:' + arrayTag);
+    propsEl.appendChild(arr);
+  }
+  const n = arr.getElementsByTagNameNS(NS.emx, refTag).length;
+  const ref = doc.createElementNS(NS.emx, 'EMX:' + refTag);
+  ref.setAttribute('index', String(n));
+  ref.textContent = colId;
+  arr.appendChild(ref);
+}
+
+function appendOrderRefIfExists(doc, propsEl, arrayTag, refTag, colId) {
+  const arr = propsEl.getElementsByTagNameNS(NS.emx, arrayTag)[0];
+  if (!arr) return;
+  const n = arr.getElementsByTagNameNS(NS.emx, refTag).length;
+  const ref = doc.createElementNS(NS.emx, 'EMX:' + refTag);
+  ref.setAttribute('index', String(n));
+  ref.textContent = colId;
+  arr.appendChild(ref);
+}
+
+/* ==================== Merge: report ==================== */
+
+function buildMergeReport(executed) {
+  const lines = [];
+  lines.push('ERwin Modeller Lite — MERGE REPORT');
+  lines.push('='.repeat(50));
+  lines.push(`Source: ${mergeState.source.fileName}`);
+  lines.push(`Target: ${mergeState.target.fileName}`);
+  lines.push(`Output: ${mergeState.mergedXmlName}`);
+  lines.push(`Timestamp: ${new Date().toISOString()}`);
+  lines.push('');
+
+  lines.push(`Tables added (${executed.tablesAdded.length}):`);
+  if (!executed.tablesAdded.length) lines.push('  (none)');
+  for (const t of executed.tablesAdded) {
+    lines.push(`  + ${t.name}  (${t.columnCount} columns)`);
+  }
+  lines.push('');
+
+  const totalCols = executed.columnsAdded.reduce((s, g) => s + g.columns.length, 0);
+  lines.push(`Columns added to existing tables (${totalCols}):`);
+  if (!executed.columnsAdded.length) lines.push('  (none)');
+  for (const g of executed.columnsAdded) {
+    lines.push(`  ~ ${g.table}:`);
+    for (const c of g.columns) {
+      const nullMark = c.nullable ? 'NULL' : 'NOT NULL';
+      lines.push(`      + ${c.name}  ${c.physDataType || '?'}  ${nullMark}  domain=${c.domainName || '—'}`);
+    }
+  }
+  lines.push('');
+
+  lines.push(`Conflicts / skips (${executed.conflicts.length}):`);
+  if (!executed.conflicts.length) lines.push('  (none)');
+  for (const c of executed.conflicts) lines.push(`  ! ${c.message}`);
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+/* ==================== Merge: UI wire-up ==================== */
+
+function wireMergeDrop(slot) {
+  const zone = document.getElementById(`merge-${slot}-drop`);
+  const input = document.getElementById(`merge-${slot}-input`);
+  if (!zone || !input) return;
+
+  zone.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'INPUT') input.click();
+  });
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('dragging');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragging'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragging');
+    const file = e.dataTransfer.files[0];
+    if (file) loadMergeFile(file, slot);
+  });
+  input.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) loadMergeFile(file, slot);
+  });
+}
+
+async function loadMergeFile(file, slot) {
+  try {
+    hideMergeLoadError();
+    const text = await file.text();
+    const result = readMergeDoc(text, slot, file.name);
+    mergeState[slot] = result;
+    showMergeLoadedState(slot, result);
+    updateMergeComputeBtn();
+    // Reset downstream UI — a re-load invalidates prior plan/result
+    mergeState.plan = null;
+    mergeState.mergedXml = null;
+    mergeState.report = null;
+    document.getElementById('merge-plan-section').classList.add('hidden');
+    document.getElementById('merge-result-section').classList.add('hidden');
+  } catch (err) {
+    showMergeLoadError(err.message);
+  }
+}
+
+function showMergeLoadedState(slot, result) {
+  const zone = document.getElementById(`merge-${slot}-drop`);
+  document.getElementById(`merge-${slot}-loaded`).classList.remove('hidden');
+  document.getElementById(`merge-${slot}-name`).textContent = result.fileName;
+  document.getElementById(`merge-${slot}-count`).textContent =
+    `${result.entities.size} entities · ${result.domainMap.size} domains · ${result.variant}`;
+  zone.classList.add('loaded');
+}
+
+function showMergeLoadError(msg) {
+  const el = document.getElementById('merge-load-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function hideMergeLoadError() {
+  document.getElementById('merge-load-error').classList.add('hidden');
+}
+
+function updateMergeComputeBtn() {
+  const ready = mergeState.source && mergeState.target;
+  document.getElementById('merge-compute-btn').disabled = !ready;
+}
+
+wireMergeDrop('source');
+wireMergeDrop('target');
+
+document.getElementById('merge-compute-btn').addEventListener('click', () => {
+  try {
+    mergePlanIdCounter = 0;
+    const plan = computeMergePlan();
+    mergeState.plan = plan;
+    renderMergePlan(plan);
+    document.getElementById('merge-plan-section').classList.remove('hidden');
+    document.getElementById('merge-result-section').classList.add('hidden');
+    document.getElementById('merge-plan-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    showMergeLoadError(err.message);
+  }
+});
+
+document.getElementById('merge-cancel-btn').addEventListener('click', () => {
+  document.getElementById('merge-plan-section').classList.add('hidden');
+  document.getElementById('merge-load-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+document.getElementById('merge-execute-btn').addEventListener('click', () => {
+  try {
+    const executed = executeMergePlan();
+    showMergeResult(executed);
+  } catch (err) {
+    showMergeLoadError(err.message);
+    document.getElementById('merge-load-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+
+function showMergeResult(executed) {
+  const body = document.getElementById('merge-result-body');
+  const totalCols = executed.columnsAdded.reduce((s, g) => s + g.columns.length, 0);
+  body.textContent =
+    `✓ Merged · ${executed.tablesAdded.length} table(s) added · ${totalCols} column(s) added · ${executed.conflicts.length} conflict(s) skipped`;
+  document.getElementById('merge-report-content').textContent = mergeState.report;
+  document.getElementById('merge-result-section').classList.remove('hidden');
+  document.getElementById('merge-plan-section').classList.add('hidden');
+  document.getElementById('merge-result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('merge-download-xml-btn').addEventListener('click', () => {
+  if (mergeState.mergedXml && mergeState.mergedXmlName) {
+    downloadBlob(mergeState.mergedXml, mergeState.mergedXmlName, 'application/xml');
+  }
+});
+
+document.getElementById('merge-download-report-btn').addEventListener('click', () => {
+  if (mergeState.report) {
+    downloadBlob(mergeState.report, 'MERGE_REPORT.txt', 'text/plain');
+  }
+});
