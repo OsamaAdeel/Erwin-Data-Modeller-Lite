@@ -21,7 +21,7 @@ export default function AddTablePanel() {
     loadError,
     loading,
     tableName,
-    subjectArea,
+    description,
     columns,
     stagedTables,
     editingId,
@@ -33,7 +33,7 @@ export default function AddTablePanel() {
     canGenerate,
     loadFile,
     setTableName,
-    setSubjectArea,
+    setDescription,
     addColumn,
     removeColumn,
     updateColumn,
@@ -136,19 +136,15 @@ export default function AddTablePanel() {
                 />
               </Field>
 
-              <Field
-                label={t.sections.addForm.subjectAreaLabel}
-                error={validation.subjectAreaError}
-              >
+              <Field label={t.sections.addForm.descriptionLabel}>
                 <Input
-                  placeholder={t.sections.addForm.subjectAreaPlaceholder}
-                  value={subjectArea}
-                  maxLength={128}
+                  placeholder={t.sections.addForm.descriptionPlaceholder}
+                  value={description}
+                  maxLength={256}
                   spellCheck={false}
                   autoComplete="off"
                   disabled={formLocked}
-                  invalid={!!validation.subjectAreaError}
-                  onChange={(e) => setSubjectArea(e.target.value)}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </Field>
             </div>
@@ -223,7 +219,6 @@ export default function AddTablePanel() {
                     disabled={isFinalized}
                     isEditing={editingId === tbl.id}
                     columnCountSuffix={t.sections.staged.columnCountSuffix}
-                    subjectAreaPrefix={t.sections.staged.subjectAreaPrefix}
                     editLabel={t.sections.staged.editBtn}
                     deleteLabel={t.sections.staged.deleteBtn}
                     onEdit={() => editStagedTable(tbl.id)}
@@ -293,7 +288,6 @@ interface StagedTableItemProps {
   disabled: boolean;
   isEditing: boolean;
   columnCountSuffix: string;
-  subjectAreaPrefix: string;
   editLabel: string;
   deleteLabel: string;
   onEdit: () => void;
@@ -305,7 +299,6 @@ function StagedTableItem({
   disabled,
   isEditing,
   columnCountSuffix,
-  subjectAreaPrefix,
   editLabel,
   deleteLabel,
   onEdit,
@@ -319,13 +312,12 @@ function StagedTableItem({
         </div>
         <div className={styles.stagedMeta}>
           <span>{table.columns.length} {columnCountSuffix}</span>
-          {table.subject_area && (
-            <>
-              <span className={styles.stagedMetaDot}>·</span>
-              <span>{subjectAreaPrefix} {table.subject_area}</span>
-            </>
-          )}
         </div>
+        {table.description && (
+          <div className={styles.stagedDescription} title={table.description}>
+            {table.description}
+          </div>
+        )}
       </div>
       <div className={styles.stagedActions}>
         <Button variant="outline" size="sm" onClick={onEdit} disabled={disabled}>

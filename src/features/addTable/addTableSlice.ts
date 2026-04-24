@@ -33,7 +33,7 @@ export interface ParsedMeta {
 export interface StagedTable {
   id: string;
   table_name: string;
-  subject_area: string;
+  description: string;
   columns: NewColumnSpec[];
 }
 
@@ -43,7 +43,7 @@ export interface AddTableState {
   loading: boolean;
   // Form (the table currently being drafted).
   tableName: string;
-  subjectArea: string;
+  description: string;
   columns: NewColumnSpec[];
   // List of tables the user has queued up for emission.
   stagedTables: StagedTable[];
@@ -71,7 +71,7 @@ const initialState: AddTableState = {
   loadError: undefined,
   loading: false,
   tableName: "",
-  subjectArea: "",
+  description: "",
   columns: [makeColumn()],
   stagedTables: [],
   editingId: null,
@@ -152,8 +152,8 @@ const slice = createSlice({
     setTableName(state, action: PayloadAction<string>) {
       state.tableName = action.payload;
     },
-    setSubjectArea(state, action: PayloadAction<string>) {
-      state.subjectArea = action.payload;
+    setDescription(state, action: PayloadAction<string>) {
+      state.description = action.payload;
     },
     addColumn(state) {
       if (state.columns.length < MAX_COLUMNS_PER_TABLE) {
@@ -182,7 +182,7 @@ const slice = createSlice({
     },
     resetForm(state) {
       state.tableName = "";
-      state.subjectArea = "";
+      state.description = "";
       state.columns = [makeColumn()];
       state.editingId = null;
     },
@@ -192,7 +192,7 @@ const slice = createSlice({
       const snapshot: StagedTable = {
         id: state.editingId ?? crypto.randomUUID(),
         table_name: state.tableName.trim(),
-        subject_area: state.subjectArea.trim(),
+        description: state.description.trim(),
         columns: state.columns.map((c) => ({ ...c, name: c.name.trim() })),
       };
       if (state.editingId) {
@@ -202,7 +202,7 @@ const slice = createSlice({
         state.stagedTables.push(snapshot);
       }
       state.tableName = "";
-      state.subjectArea = "";
+      state.description = "";
       state.columns = [makeColumn()];
       state.editingId = null;
       state.success = undefined;
@@ -213,7 +213,7 @@ const slice = createSlice({
       if (state.editingId === action.payload) {
         state.editingId = null;
         state.tableName = "";
-        state.subjectArea = "";
+        state.description = "";
         state.columns = [makeColumn()];
       }
       // Removing the last table invalidates finalization.
@@ -224,7 +224,7 @@ const slice = createSlice({
       if (!t) return;
       state.editingId = t.id;
       state.tableName = t.table_name;
-      state.subjectArea = t.subject_area;
+      state.description = t.description;
       // Deep-clone columns so editing the form doesn't mutate the staged copy.
       state.columns = t.columns.map((c) => ({ ...c }));
       state.success = undefined;
@@ -232,7 +232,7 @@ const slice = createSlice({
     cancelEdit(state) {
       state.editingId = null;
       state.tableName = "";
-      state.subjectArea = "";
+      state.description = "";
       state.columns = [makeColumn()];
     },
     finalize(state) {
@@ -259,7 +259,7 @@ const slice = createSlice({
         state.parsed = action.payload;
         // New file = fresh session: clear form, staging, and finalization.
         state.tableName = "";
-        state.subjectArea = "";
+        state.description = "";
         state.columns = [makeColumn()];
         state.stagedTables = [];
         state.editingId = null;
@@ -295,7 +295,7 @@ const slice = createSlice({
 
 export const {
   setTableName,
-  setSubjectArea,
+  setDescription,
   addColumn,
   removeColumn,
   updateColumn,

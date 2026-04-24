@@ -13,7 +13,7 @@ import {
   loadFile as loadFileThunk,
   removeColumn as removeColumnAction,
   resetForm as resetFormAction,
-  setSubjectArea as setSubjectAreaAction,
+  setDescription as setDescriptionAction,
   setTableName as setTableNameAction,
   unfinalize as unfinalizeAction,
   updateColumn as updateColumnAction,
@@ -26,7 +26,7 @@ export function useAddTable() {
   const loadError = useAppSelector((s) => s.addTable.loadError);
   const loading = useAppSelector((s) => s.addTable.loading);
   const tableName = useAppSelector((s) => s.addTable.tableName);
-  const subjectArea = useAppSelector((s) => s.addTable.subjectArea);
+  const description = useAppSelector((s) => s.addTable.description);
   const columns = useAppSelector((s) => s.addTable.columns);
   const stagedTables = useAppSelector((s) => s.addTable.stagedTables);
   const editingId = useAppSelector((s) => s.addTable.editingId);
@@ -37,14 +37,13 @@ export function useAddTable() {
     () =>
       validate({
         tableName,
-        subjectArea,
         columns,
         entityDict: parsed?.entityDict ?? new Map(),
         stagedTables,
         editingId,
         isFinalized,
       }),
-    [tableName, subjectArea, columns, parsed, stagedTables, editingId, isFinalized]
+    [tableName, columns, parsed, stagedTables, editingId, isFinalized]
   );
 
   const totalStagedColumns = useMemo(
@@ -66,9 +65,9 @@ export function useAddTable() {
     [dispatch]
   );
 
-  const setSubjectArea = useCallback(
-    (name: string) => {
-      dispatch(setSubjectAreaAction(name));
+  const setDescription = useCallback(
+    (value: string) => {
+      dispatch(setDescriptionAction(value));
     },
     [dispatch]
   );
@@ -144,7 +143,7 @@ export function useAddTable() {
     loadError,
     loading,
     tableName,
-    subjectArea,
+    description,
     columns,
     stagedTables,
     editingId,
@@ -156,7 +155,7 @@ export function useAddTable() {
     canGenerate,
     loadFile,
     setTableName,
-    setSubjectArea,
+    setDescription,
     addColumn,
     removeColumn,
     updateColumn,

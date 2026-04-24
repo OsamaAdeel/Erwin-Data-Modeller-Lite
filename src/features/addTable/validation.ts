@@ -19,12 +19,10 @@ export interface ValidationResult {
   columnErrors: ColumnError[];
   canSubmit: boolean;                  // form can be committed to the staged list
   tableNameValid: boolean;
-  subjectAreaError?: string;
 }
 
 export interface ValidationInput {
   tableName: string;
-  subjectArea: string;
   columns: NewColumnSpec[];
   entityDict: Map<string, string>;
   stagedTables: StagedTable[];
@@ -41,7 +39,6 @@ export const WARNING_MESSAGES: Record<string, string> = {
 export function validate(input: ValidationInput): ValidationResult {
   const {
     tableName,
-    subjectArea,
     columns,
     entityDict,
     stagedTables,
@@ -53,7 +50,6 @@ export function validate(input: ValidationInput): ValidationResult {
   const warns: string[] = [];
   const colErrs: ColumnError[] = [];
   let tableNameError: string | undefined;
-  let subjectAreaError: string | undefined;
   let tableNameValid = false;
 
   // Once finalized, the form is read-only.
@@ -82,12 +78,6 @@ export function validate(input: ValidationInput): ValidationResult {
     } else {
       tableNameValid = true;
     }
-  }
-
-  const sa = subjectArea.trim();
-  if (!sa) {
-    errs.push("subject-area-empty");
-    subjectAreaError = "Subject area is required.";
   }
 
   if (!columns.length) errs.push("no-columns");
@@ -148,7 +138,6 @@ export function validate(input: ValidationInput): ValidationResult {
     errors: errs,
     warnings: warns,
     tableNameError,
-    subjectAreaError,
     columnErrors: colErrs,
     tableNameValid,
     canSubmit: errs.length === 0,
