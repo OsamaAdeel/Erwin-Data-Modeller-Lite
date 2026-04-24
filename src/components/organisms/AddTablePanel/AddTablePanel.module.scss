@@ -64,13 +64,29 @@
   font-family: $font-sans !important;
 }
 
+.formBlock {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &.locked { opacity: 0.55; pointer-events: none; }
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-3;
+
+  @include mobile { grid-template-columns: 1fr; }
+}
+
 .colsBlock {
   border: 1px solid $border;
   border-radius: $radius-sm;
   background: #FAFBFD;
   padding: $space-3;
 
-  &.locked { opacity: 0.5; pointer-events: none; }
+  &.colsLocked { opacity: 0.5; pointer-events: none; }
 }
 
 .colsHeader {
@@ -119,6 +135,115 @@
   display: flex;
   gap: $space-2;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+// Staged-tables list -----------------------------------------------------
+
+.stagedEmpty {
+  color: $text-muted;
+  font-style: italic;
+  padding: $space-3;
+  background: #FAFBFD;
+  border: 1px dashed $border-2;
+  border-radius: $radius-sm;
+  text-align: center;
+}
+
+.stagedCount {
+  font-size: $fs-sm;
+  color: $text-muted;
+  margin-bottom: $space-2;
+}
+
+.stagedList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: $space-3;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stagedCard {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  padding: $space-3;
+  background: $surface;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:hover { border-color: $border-2; }
+
+  &.stagedCardEditing {
+    border-color: $primary;
+    box-shadow: 0 0 0 2px rgba($primary, 0.12);
+  }
+}
+
+.stagedBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.stagedName {
+  font-family: $font-mono;
+  font-weight: 600;
+  font-size: $fs-md;
+  color: $text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stagedMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-1;
+  font-size: $fs-sm;
+  color: $text-muted;
+}
+
+.stagedMetaDot {
+  color: $text-dim;
+}
+
+.stagedActions {
+  display: flex;
+  gap: $space-2;
+  justify-content: flex-end;
+}
+
+// Finalize card ----------------------------------------------------------
+
+.finalizeHead {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  margin-bottom: $space-3;
+  flex-wrap: wrap;
+}
+
+.finalizeSummary {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+  color: $text-muted;
+  font-size: $fs-sm;
+}
+
+.finalizeSummaryDot { color: $text-dim; }
+
+.finalizeHint {
+  margin-top: $space-2;
+  color: $text-muted;
+  font-size: $fs-sm;
+  font-style: italic;
 }
 
 .success {
@@ -130,6 +255,7 @@
   border: 1px solid rgba($green, 0.3);
   border-radius: $radius-sm;
   color: $green;
+  margin-top: $space-3;
 }
 
 .mono {

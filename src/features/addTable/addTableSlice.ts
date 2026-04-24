@@ -17,8 +17,9 @@ import {
 } from "@/store/refs";
 
 export interface SuccessInfo {
-  tableName: string;
+  tableName: string;       // last added; kept for single-table back-compat
   filename: string;
+  tablesAdded: number;     // total staged tables written on generate
 }
 
 export interface ParsedMeta {
@@ -29,12 +30,27 @@ export interface ParsedMeta {
   domainMap: Map<string, string>;
 }
 
+export interface StagedTable {
+  id: string;
+  table_name: string;
+  subject_area: string;
+  columns: NewColumnSpec[];
+}
+
 export interface AddTableState {
   parsed: ParsedMeta | null;
   loadError?: string;
   loading: boolean;
+  // Form (the table currently being drafted).
   tableName: string;
+  subjectArea: string;
   columns: NewColumnSpec[];
+  // List of tables the user has queued up for emission.
+  stagedTables: StagedTable[];
+  // When set, the form is editing an existing staged table (in place).
+  editingId: string | null;
+  // Finalization gate — Generate XML is only possible when true.
+  isFinalized: boolean;
   success?: SuccessInfo;
 }
 
@@ -55,7 +71,11 @@ const initialState: AddTableState = {
   loadError: undefined,
   loading: false,
   tableName: "",
+  subjectArea: "",
   columns: [makeColumn()],
+  stagedTables: [],
+  editingId: null,
+  isFinalized: false,
   success: undefined,
 };
 
@@ -89,20 +109,25 @@ export const loadFile = createAsyncThunk<ParsedMeta, File, ThunkConfig>(
 export const generate = createAsyncThunk<SuccessInfo, void, ThunkConfig>(
   "addTable/generate",
   async (_, { getState, rejectWithValue }) => {
-    const { parsed, tableName, columns } = getState().addTable;
+    const { parsed, stagedTables, isFinalized } = getState().addTable;
     if (!parsed) return rejectWithValue("No XML loaded");
+    if (!isFinalized) return rejectWithValue("Model is not finalized");
+    if (stagedTables.length === 0) return rejectWithValue("No tables to add");
 
     const doc = getParsedDoc(parsed.parseId);
     if (!doc) return rejectWithValue("Parsed document is no longer available");
 
-    const trimmedName = tableName.trim();
-    const trimmedCols = columns.map((c) => ({ ...c, name: c.name.trim() }));
-
+    let lastName = "";
     try {
-      if (parsed.variant === "erwin-dm-v9") {
-        addEntityDMv9(doc, trimmedName, trimmedCols, parsed.domainMap);
-      } else {
-        addEntityClassic(doc, trimmedName, trimmedCols);
+      for (const t of stagedTables) {
+        const trimmedName = t.table_name.trim();
+        const trimmedCols = t.columns.map((c) => ({ ...c, name: c.name.trim() }));
+        if (parsed.variant === "erwin-dm-v9") {
+          addEntityDMv9(doc, trimmedName, trimmedCols, parsed.domainMap);
+        } else {
+          addEntityClassic(doc, trimmedName, trimmedCols);
+        }
+        lastName = trimmedName;
       }
     } catch (err) {
       if (err instanceof EmitterError) return rejectWithValue(err.message);
@@ -112,7 +137,11 @@ export const generate = createAsyncThunk<SuccessInfo, void, ThunkConfig>(
     const nextName = outputFilename(parsed.fileName);
     const xml = serializeDoc(doc);
     downloadBlob(xml, nextName, "application/xml");
-    return { tableName: trimmedName, filename: nextName };
+    return {
+      tableName: lastName,
+      filename: nextName,
+      tablesAdded: stagedTables.length,
+    };
   }
 );
 
@@ -122,6 +151,9 @@ const slice = createSlice({
   reducers: {
     setTableName(state, action: PayloadAction<string>) {
       state.tableName = action.payload;
+    },
+    setSubjectArea(state, action: PayloadAction<string>) {
+      state.subjectArea = action.payload;
     },
     addColumn(state) {
       if (state.columns.length < MAX_COLUMNS_PER_TABLE) {
@@ -150,7 +182,68 @@ const slice = createSlice({
     },
     resetForm(state) {
       state.tableName = "";
+      state.subjectArea = "";
       state.columns = [makeColumn()];
+      state.editingId = null;
+    },
+    // Stage the current form as a new table, or replace the one being edited.
+    commitTable(state) {
+      if (state.isFinalized) return;
+      const snapshot: StagedTable = {
+        id: state.editingId ?? crypto.randomUUID(),
+        table_name: state.tableName.trim(),
+        subject_area: state.subjectArea.trim(),
+        columns: state.columns.map((c) => ({ ...c, name: c.name.trim() })),
+      };
+      if (state.editingId) {
+        const idx = state.stagedTables.findIndex((t) => t.id === state.editingId);
+        if (idx >= 0) state.stagedTables[idx] = snapshot;
+      } else {
+        state.stagedTables.push(snapshot);
+      }
+      state.tableName = "";
+      state.subjectArea = "";
+      state.columns = [makeColumn()];
+      state.editingId = null;
+      state.success = undefined;
+    },
+    deleteStagedTable(state, action: PayloadAction<string>) {
+      state.stagedTables = state.stagedTables.filter((t) => t.id !== action.payload);
+      // Cancel edit if the table being edited was removed.
+      if (state.editingId === action.payload) {
+        state.editingId = null;
+        state.tableName = "";
+        state.subjectArea = "";
+        state.columns = [makeColumn()];
+      }
+      // Removing the last table invalidates finalization.
+      if (state.stagedTables.length === 0) state.isFinalized = false;
+    },
+    editStagedTable(state, action: PayloadAction<string>) {
+      const t = state.stagedTables.find((x) => x.id === action.payload);
+      if (!t) return;
+      state.editingId = t.id;
+      state.tableName = t.table_name;
+      state.subjectArea = t.subject_area;
+      // Deep-clone columns so editing the form doesn't mutate the staged copy.
+      state.columns = t.columns.map((c) => ({ ...c }));
+      state.success = undefined;
+    },
+    cancelEdit(state) {
+      state.editingId = null;
+      state.tableName = "";
+      state.subjectArea = "";
+      state.columns = [makeColumn()];
+    },
+    finalize(state) {
+      if (state.stagedTables.length === 0) return;
+      state.isFinalized = true;
+    },
+    unfinalize(state) {
+      state.isFinalized = false;
+      state.success = undefined;
+    },
+    clearSuccess(state) {
       state.success = undefined;
     },
   },
@@ -164,8 +257,13 @@ const slice = createSlice({
       .addCase(loadFile.fulfilled, (state, action) => {
         state.loading = false;
         state.parsed = action.payload;
+        // New file = fresh session: clear form, staging, and finalization.
         state.tableName = "";
+        state.subjectArea = "";
         state.columns = [makeColumn()];
+        state.stagedTables = [];
+        state.editingId = null;
+        state.isFinalized = false;
         state.success = undefined;
       })
       .addCase(loadFile.rejected, (state, action) => {
@@ -176,11 +274,18 @@ const slice = createSlice({
         state.success = action.payload;
         if (state.parsed) {
           state.parsed.fileName = action.payload.filename;
-          state.parsed.entityDict.set(
-            action.payload.tableName.toUpperCase(),
-            action.payload.tableName
-          );
+          for (const t of state.stagedTables) {
+            state.parsed.entityDict.set(
+              t.table_name.toUpperCase(),
+              t.table_name
+            );
+          }
         }
+        // After a successful emit the session is consumed — clear staging and
+        // exit finalized mode. The file is re-loaded with the rolled-forward
+        // name, so the user can keep adding against the new entity dict.
+        state.stagedTables = [];
+        state.isFinalized = false;
       })
       .addCase(generate.rejected, (state, action) => {
         state.loadError = action.payload ?? action.error.message;
@@ -190,10 +295,18 @@ const slice = createSlice({
 
 export const {
   setTableName,
+  setSubjectArea,
   addColumn,
   removeColumn,
   updateColumn,
   resetForm,
+  commitTable,
+  deleteStagedTable,
+  editStagedTable,
+  cancelEdit,
+  finalize,
+  unfinalize,
+  clearSuccess,
 } = slice.actions;
 
 export default slice.reducer;

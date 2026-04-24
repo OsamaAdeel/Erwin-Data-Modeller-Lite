@@ -4,6 +4,7 @@ import {
   validateIdentifier,
 } from "@/services/ddl/oracleParser";
 import type { NewColumnSpec } from "@/services/xml/types";
+import type { StagedTable } from "./addTableSlice";
 
 export interface ColumnError {
   colId: string;
@@ -16,14 +17,19 @@ export interface ValidationResult {
   warnings: string[];
   tableNameError?: string;             // user-facing error string
   columnErrors: ColumnError[];
-  canSubmit: boolean;
+  canSubmit: boolean;                  // form can be committed to the staged list
   tableNameValid: boolean;
+  subjectAreaError?: string;
 }
 
 export interface ValidationInput {
   tableName: string;
+  subjectArea: string;
   columns: NewColumnSpec[];
   entityDict: Map<string, string>;
+  stagedTables: StagedTable[];
+  editingId: string | null;
+  isFinalized: boolean;
 }
 
 export const WARNING_MESSAGES: Record<string, string> = {
@@ -33,12 +39,31 @@ export const WARNING_MESSAGES: Record<string, string> = {
 };
 
 export function validate(input: ValidationInput): ValidationResult {
-  const { tableName, columns, entityDict } = input;
+  const {
+    tableName,
+    subjectArea,
+    columns,
+    entityDict,
+    stagedTables,
+    editingId,
+    isFinalized,
+  } = input;
+
   const errs: string[] = [];
   const warns: string[] = [];
   const colErrs: ColumnError[] = [];
   let tableNameError: string | undefined;
+  let subjectAreaError: string | undefined;
   let tableNameValid = false;
+
+  // Once finalized, the form is read-only.
+  if (isFinalized) errs.push("finalized");
+
+  const stagedNames = new Set(
+    stagedTables
+      .filter((t) => t.id !== editingId)
+      .map((t) => t.table_name.toUpperCase())
+  );
 
   const tn = tableName.trim();
   if (!tn) {
@@ -46,6 +71,9 @@ export function validate(input: ValidationInput): ValidationResult {
   } else if (entityDict?.has(tn.toUpperCase())) {
     errs.push("table-name-dup");
     tableNameError = `Table "${tn}" already exists in the model.`;
+  } else if (stagedNames.has(tn.toUpperCase())) {
+    errs.push("table-name-dup-staged");
+    tableNameError = `Table "${tn}" is already queued in this session.`;
   } else {
     const idCheck = validateIdentifier(tn, "table name");
     if (!idCheck.ok) {
@@ -54,6 +82,12 @@ export function validate(input: ValidationInput): ValidationResult {
     } else {
       tableNameValid = true;
     }
+  }
+
+  const sa = subjectArea.trim();
+  if (!sa) {
+    errs.push("subject-area-empty");
+    subjectAreaError = "Subject area is required.";
   }
 
   if (!columns.length) errs.push("no-columns");
@@ -114,6 +148,7 @@ export function validate(input: ValidationInput): ValidationResult {
     errors: errs,
     warnings: warns,
     tableNameError,
+    subjectAreaError,
     columnErrors: colErrs,
     tableNameValid,
     canSubmit: errs.length === 0,
