@@ -15,19 +15,44 @@
       "variantLabel": "Variant"
     },
     "addForm": {
-      "heading": "3. Define new table",
+      "heading": "3. Define a table",
       "nameLabel": "Table name",
       "namePlaceholder": "MY_NEW_TABLE",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "What does this table store?",
       "ddlLabel": "Columns (Oracle DDL — one per line)",
       "ddlPlaceholder": "ID NUMBER NOT NULL,\nNAME VARCHAR2(100) NOT NULL,\nCREATED_AT DATE",
       "primaryKeyLabel": "Primary key columns (comma-separated)",
       "primaryKeyPlaceholder": "ID",
-      "submit": "Add to model",
-      "downloadHint": "After adding, you can download the updated XML below."
+      "submit": "Add table",
+      "submitEdit": "Save changes",
+      "downloadHint": "Queue one or more tables, then finalize to enable XML generation."
+    },
+    "staged": {
+      "heading": "4. Added tables",
+      "empty": "No tables queued yet. Fill in the form above and click Add table.",
+      "countLabel": "{n} table(s) queued",
+      "columnCountSuffix": "column(s)",
+      "descriptionPrefix": "",
+      "editBtn": "Edit",
+      "deleteBtn": "Delete"
+    },
+    "finalize": {
+      "heading": "5. Finalize & generate",
+      "draftLabel": "Draft Mode",
+      "finalizedLabel": "Finalized",
+      "summaryTables": "Total tables: {n}",
+      "summaryColumns": "Total columns: {n}",
+      "finalizeBtn": "Finalize model",
+      "unfinalizeBtn": "Unfinalize",
+      "generateBtn": "Generate XML",
+      "confirmFinalize": "Finalize the model? You won't be able to edit tables until you unfinalize.",
+      "needStagedHint": "Queue at least one table to enable finalization.",
+      "needFinalizeHint": "Finalize the model to enable XML generation."
     }
   },
   "messages": {
-    "addSuccess": "Table added — download the updated file below.",
+    "addSuccess": "XML generated — download started.",
     "downloadHint": "Filenames ending in _V<n>.xml are bumped to _V<n+1>.xml; otherwise an updated_ prefix is added."
   }
 }

@@ -4,6 +4,7 @@ import {
   validateIdentifier,
 } from "@/services/ddl/oracleParser";
 import type { NewColumnSpec } from "@/services/xml/types";
+import type { StagedTable } from "./addTableSlice";
 
 export interface ColumnError {
   colId: string;
@@ -16,7 +17,7 @@ export interface ValidationResult {
   warnings: string[];
   tableNameError?: string;             // user-facing error string
   columnErrors: ColumnError[];
-  canSubmit: boolean;
+  canSubmit: boolean;                  // form can be committed to the staged list
   tableNameValid: boolean;
 }
 
@@ -24,6 +25,9 @@ export interface ValidationInput {
   tableName: string;
   columns: NewColumnSpec[];
   entityDict: Map<string, string>;
+  stagedTables: StagedTable[];
+  editingId: string | null;
+  isFinalized: boolean;
 }
 
 export const WARNING_MESSAGES: Record<string, string> = {
@@ -33,12 +37,29 @@ export const WARNING_MESSAGES: Record<string, string> = {
 };
 
 export function validate(input: ValidationInput): ValidationResult {
-  const { tableName, columns, entityDict } = input;
+  const {
+    tableName,
+    columns,
+    entityDict,
+    stagedTables,
+    editingId,
+    isFinalized,
+  } = input;
+
   const errs: string[] = [];
   const warns: string[] = [];
   const colErrs: ColumnError[] = [];
   let tableNameError: string | undefined;
   let tableNameValid = false;
+
+  // Once finalized, the form is read-only.
+  if (isFinalized) errs.push("finalized");
+
+  const stagedNames = new Set(
+    stagedTables
+      .filter((t) => t.id !== editingId)
+      .map((t) => t.table_name.toUpperCase())
+  );
 
   const tn = tableName.trim();
   if (!tn) {
@@ -46,6 +67,9 @@ export function validate(input: ValidationInput): ValidationResult {
   } else if (entityDict?.has(tn.toUpperCase())) {
     errs.push("table-name-dup");
     tableNameError = `Table "${tn}" already exists in the model.`;
+  } else if (stagedNames.has(tn.toUpperCase())) {
+    errs.push("table-name-dup-staged");
+    tableNameError = `Table "${tn}" is already queued in this session.`;
   } else {
     const idCheck = validateIdentifier(tn, "table name");
     if (!idCheck.ok) {
