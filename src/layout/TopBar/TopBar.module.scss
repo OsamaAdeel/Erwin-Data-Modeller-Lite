@@ -12,16 +12,18 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: $space-3;
+  gap: $space-4;
 }
 
-.mark {
-  width: 36px; height: 36px;
-  border-radius: $radius-sm;
-  background: $primary;
-  display: grid; place-items: center;
-  font-weight: 700;
-  color: #fff;
+.logo {
+  display: block;
+  height: auto;
+}
+
+.divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .title { font-weight: 600; }
