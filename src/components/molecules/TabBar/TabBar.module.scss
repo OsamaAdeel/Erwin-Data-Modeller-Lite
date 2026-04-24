@@ -1,0 +1,40 @@
+.bar {
+  display: flex;
+  gap: $space-1;
+  border-bottom: 1px solid $border;
+  margin-bottom: $space-5;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 10px 18px;
+  border-radius: $radius-sm $radius-sm 0 0;
+  font-weight: 500;
+  font-size: $fs-md;
+  color: $text-muted;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+
+  &:hover:not(:disabled) {
+    color: $text;
+    background: $bg;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.active {
+  color: $primary;
+  border-bottom-color: $primary;
+  background: $surface;
+
+  &:hover:not(:disabled) {
+    color: $primary;
+    background: $surface;
+  }
+}

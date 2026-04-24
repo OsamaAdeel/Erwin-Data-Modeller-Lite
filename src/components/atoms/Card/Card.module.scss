@@ -1,0 +1,30 @@
+.card {
+  @include card;
+  padding: $space-5 $space-6;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+  margin-bottom: $space-4;
+}
+
+.step {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: $primary-soft;
+  color: $primary;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.titleWrap { flex: 1; min-width: 0; }
+.title { margin: 0 0 2px; font-size: $fs-xl; font-weight: 600; }
+.subtitle { margin: 0; color: $text-muted; font-size: $fs-md; }
+
+.actions { display: flex; gap: $space-2; }
+.body    { display: flex; flex-direction: column; gap: $space-4; }

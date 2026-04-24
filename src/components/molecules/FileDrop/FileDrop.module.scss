@@ -1,0 +1,45 @@
+.wrap { display: flex; flex-direction: column; gap: $space-3; }
+
+.zone {
+  border: 2px dashed $border-2;
+  border-radius: $radius;
+  padding: $space-8 $space-6;
+  text-align: center;
+  background: #FAFBFD;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-1;
+
+  &:hover, &:focus { border-color: $primary; outline: none; background: $primary-soft; }
+}
+
+.over { border-color: $primary; background: $primary-soft; }
+.disabled { opacity: 0.6; pointer-events: none; }
+
+.icon { font-size: 22px; color: $primary; margin-bottom: $space-1; }
+.hint { font-weight: 500; color: $text; }
+.subhint { color: $text-muted; font-size: $fs-sm; margin-top: $space-1; }
+
+.loaded {
+  border: 1px solid $border;
+  background: $green-soft;
+  border-left: 4px solid $green;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-4;
+}
+.loadedName { font-family: $font-mono; font-weight: 600; }
+.loadedMeta { font-size: $fs-sm; color: $text-muted; margin-top: 2px; }
+
+.error {
+  border: 1px solid $red;
+  background: $red-bg;
+  color: $red;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+  font-size: $fs-sm;
+}

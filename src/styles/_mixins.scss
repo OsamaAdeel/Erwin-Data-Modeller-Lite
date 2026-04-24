@@ -1,0 +1,45 @@
+// =====================================================================
+// Reusable mixins
+// =====================================================================
+
+@mixin card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  box-shadow: $shadow-sm;
+}
+
+@mixin focus-ring($color: $primary) {
+  outline: 2px solid rgba($color, 0.4);
+  outline-offset: 2px;
+}
+
+@mixin clickable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 120ms ease, border-color 120ms ease, transform 60ms ease;
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Breakpoints
+@mixin mobile {
+  @media (max-width: 720px) { @content; }
+}
+
+@mixin tablet {
+  @media (max-width: 960px) { @content; }
+}

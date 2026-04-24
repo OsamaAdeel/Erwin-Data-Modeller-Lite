@@ -1,0 +1,27 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+.vite
+.cache
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (legacy from earlier branches)
+__pycache__/
+*.pyc
+
+# Local Claude state
+.claude/

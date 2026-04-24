@@ -1,0 +1,14 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.label {
+  font-weight: 500;
+  font-size: $fs-md;
+  color: $text;
+}
+
+.hint  { font-size: $fs-sm; color: $text-muted; }
+.error { font-size: $fs-sm; color: $red; }

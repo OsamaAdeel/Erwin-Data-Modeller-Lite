@@ -1,0 +1,33 @@
+{
+  "title": "Add Tables",
+  "subtitle": "Upload an erwin XML model, define a new table, and download the updated file.",
+  "sections": {
+    "upload": {
+      "heading": "1. Upload XML",
+      "dropHint": "Drop your erwin XML file here or click to choose",
+      "dropSubhint": "Supports both classic erwin and erwin DM 9.x exports",
+      "loadedPrefix": "Loaded:"
+    },
+    "info": {
+      "heading": "2. File overview",
+      "entitiesLabel": "Entities",
+      "domainsLabel": "Domains",
+      "variantLabel": "Variant"
+    },
+    "addForm": {
+      "heading": "3. Define new table",
+      "nameLabel": "Table name",
+      "namePlaceholder": "MY_NEW_TABLE",
+      "ddlLabel": "Columns (Oracle DDL — one per line)",
+      "ddlPlaceholder": "ID NUMBER NOT NULL,\nNAME VARCHAR2(100) NOT NULL,\nCREATED_AT DATE",
+      "primaryKeyLabel": "Primary key columns (comma-separated)",
+      "primaryKeyPlaceholder": "ID",
+      "submit": "Add to model",
+      "downloadHint": "After adding, you can download the updated XML below."
+    }
+  },
+  "messages": {
+    "addSuccess": "Table added — download the updated file below.",
+    "downloadHint": "Filenames ending in _V<n>.xml are bumped to _V<n+1>.xml; otherwise an updated_ prefix is added."
+  }
+}

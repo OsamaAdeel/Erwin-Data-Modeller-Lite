@@ -1,0 +1,29 @@
+{
+  "appName": "Erwin Data Modeller Lite",
+  "tagline": "Browse, edit and export erwin XML models — all in your browser",
+  "footer": {
+    "copyright": "© Erwin Data Modeller Lite",
+    "openSource": "Open-source web tool",
+    "github": "View on GitHub"
+  },
+  "buttons": {
+    "browse": "Browse",
+    "download": "Download",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "save": "Save",
+    "reset": "Reset",
+    "addAnother": "Add another"
+  },
+  "tabs": {
+    "addTable": "Add Tables",
+    "merge": "Merge Models",
+    "erd": "ERD Diagram"
+  },
+  "errors": {
+    "noFile": "Please choose an XML file first.",
+    "parseFailed": "Could not parse this file as XML.",
+    "unknownVariant": "Unrecognized erwin XML variant."
+  }
+}

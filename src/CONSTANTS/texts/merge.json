@@ -1,0 +1,5 @@
+{
+  "title": "Merge Models",
+  "subtitle": "Pull tables and columns from a SOURCE erwin XML into a TARGET. One-way; nothing in target is removed.",
+  "comingSoon": "Coming in the next release — drop two erwin-dm-v9 files and pick which tables and columns to move across."
+}

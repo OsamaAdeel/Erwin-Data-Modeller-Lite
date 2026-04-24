@@ -1,0 +1,32 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-6;
+  background: $navy;
+  color: #fff;
+  box-shadow: $shadow-sm;
+  min-height: $header-h;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.mark {
+  width: 36px; height: 36px;
+  border-radius: $radius-sm;
+  background: $primary;
+  display: grid; place-items: center;
+  font-weight: 700;
+  color: #fff;
+}
+
+.title { font-weight: 600; }
+.tagline {
+  font-size: $fs-sm;
+  opacity: 0.75;
+  margin-top: 2px;
+}
