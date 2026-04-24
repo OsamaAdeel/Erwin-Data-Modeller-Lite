@@ -1,5 +1,45 @@
 {
   "title": "Merge Models",
   "subtitle": "Pull tables and columns from a SOURCE erwin XML into a TARGET. One-way; nothing in target is removed.",
-  "comingSoon": "Coming in the next release — drop two erwin-dm-v9 files and pick which tables and columns to move across."
+  "sections": {
+    "load": {
+      "heading": "1. Load source and target",
+      "sourceRole": "SOURCE",
+      "sourceSub": "Model to pull tables & columns FROM",
+      "targetRole": "TARGET",
+      "targetSub": "Model to merge additions INTO",
+      "computeBtn": "Compute merge plan",
+      "computeHint": "Load both files (erwin-dm-v9) to continue.",
+      "wrongVariant": "This file is not erwin-dm-v9. Merge supports erwin-dm-v9 only."
+    },
+    "plan": {
+      "heading": "2. Pick what to move",
+      "noopBanner": "✓ Target already contains everything in source — nothing to merge.",
+      "tilesMissingTables": "Missing tables",
+      "tilesMissingCols": "Missing columns",
+      "tilesConflicts": "Conflicts",
+      "pendingHeading": "SOURCE (pending)",
+      "stagedHeading": "TARGET (will add)",
+      "moveAllRight": "→ Move all",
+      "moveAllLeft": "← Unselect all",
+      "execute": "Execute merge",
+      "back": "Back",
+      "moveRight": "Move to target",
+      "moveLeft": "Move back",
+      "carriedTooltip": "Carried with parent table",
+      "showConflicts": "Show conflicts (advanced)",
+      "noConflicts": "No conflicts.",
+      "pendingEmpty": "Nothing pending.",
+      "stagedEmpty": "Nothing staged yet."
+    },
+    "result": {
+      "heading": "3. Done",
+      "downloadXml": "⬇ Download merged XML",
+      "downloadReport": "⬇ Download report",
+      "another": "Merge another pair",
+      "addedTables": "Added {n} table(s)",
+      "addedColumns": "Added {n} column(s) to existing tables",
+      "unresolved": "{n} conflict(s) left unresolved (see report)"
+    }
+  }
 }

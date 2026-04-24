@@ -1,0 +1,294 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+.dropGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-5;
+
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.slotRole {
+  font-size: $fs-xs;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: $primary;
+  text-transform: uppercase;
+}
+
+.slotSub {
+  color: $text-muted;
+  font-size: $fs-sm;
+  margin-bottom: $space-1;
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+.error {
+  color: $red;
+  font-size: $fs-sm;
+}
+
+.noop {
+  background: $green-soft;
+  border: 1px solid rgba($green, 0.3);
+  color: $green;
+  padding: $space-3 $space-4;
+  border-radius: $radius-sm;
+  font-weight: 500;
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-3;
+
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+/* ------------- arrow picker ------------- */
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-4;
+
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.pane {
+  border: 1px solid $border;
+  border-radius: $radius;
+  background: #FAFBFD;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+  max-height: 60vh;
+}
+
+.paneHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: $space-2 $space-3;
+  border-bottom: 1px solid $border;
+  background: $surface;
+  border-radius: $radius $radius 0 0;
+
+  h3 {
+    margin: 0;
+    font-size: $fs-sm;
+    letter-spacing: 0.06em;
+  }
+}
+
+.paneCounts {
+  font-size: $fs-xs;
+  color: $text-muted;
+}
+
+.paneBody {
+  flex: 1;
+  overflow: auto;
+  padding: $space-2;
+}
+
+.paneActions {
+  padding: $space-2 $space-3;
+  border-top: 1px solid $border;
+  background: $surface;
+  border-radius: 0 0 $radius $radius;
+  display: flex;
+  gap: $space-2;
+}
+
+.empty {
+  padding: $space-5;
+  color: $text-muted;
+  font-style: italic;
+  text-align: center;
+}
+
+/* ------------- row ------------- */
+
+.row {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+  margin-bottom: $space-2;
+  transition: border-color 120ms ease;
+
+  &:hover { border-color: $border-2; }
+}
+
+.rowHead {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.rowIcon {
+  width: 14px;
+  font-weight: 600;
+  color: $text-muted;
+}
+
+.rowIconCol {
+  color: $primary;
+  font-weight: 700;
+}
+
+.rowTitle {
+  flex: 1;
+  font-family: $font-mono;
+  font-size: $fs-sm;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.rowSub {
+  margin-top: $space-1;
+  color: $text-muted;
+  font-size: $fs-xs;
+  padding-left: 22px;
+}
+
+.rowNested {
+  margin-top: $space-1;
+  padding-left: 22px;
+  color: $text-muted;
+}
+
+.rowNestedCol {
+  font-family: $font-mono;
+  font-size: $fs-xs;
+  padding: 1px 0;
+}
+
+.moveBtn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid $border-2;
+  background: $surface;
+  border-radius: 6px;
+  font-size: 14px;
+  color: $primary;
+  display: grid;
+  place-items: center;
+  @include clickable;
+
+  &:hover:not(:disabled) {
+    border-color: $primary;
+    background: $primary-soft;
+  }
+}
+
+/* ------------- conflicts ------------- */
+
+.conflicts {
+  margin-top: $space-3;
+  background: $amber-bg;
+  border: 1px solid $amber-border;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+
+  summary {
+    cursor: pointer;
+    font-weight: 500;
+    color: $amber;
+    padding: $space-1 0;
+  }
+}
+
+.conflictsBody {
+  margin-top: $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.conflictRow {
+  background: $surface;
+  border: 1px solid $amber-border;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+}
+
+.conflictLabel { font-weight: 500; }
+
+.conflictDiffs {
+  margin: $space-2 0 0;
+  background: #FFFCF0;
+  border-radius: 6px;
+  padding: $space-2;
+  font-size: $fs-xs;
+  overflow-x: auto;
+}
+
+/* ------------- result ------------- */
+
+.success {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  background: $green-soft;
+  border: 1px solid rgba($green, 0.3);
+  border-radius: $radius-sm;
+  color: $green;
+  font-size: $fs-md;
+}
+
+.warn {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  background: $amber-bg;
+  border: 1px solid $amber-border;
+  border-radius: $radius-sm;
+  color: $amber;
+  font-size: $fs-md;
+}
+
+.log {
+  margin-top: $space-2;
+
+  summary {
+    cursor: pointer;
+    color: $primary;
+    font-weight: 500;
+    padding: $space-1 0;
+  }
+
+  pre {
+    background: #FAFBFD;
+    border: 1px solid $border;
+    border-radius: $radius-sm;
+    padding: $space-3;
+    max-height: 320px;
+    overflow: auto;
+    font-size: $fs-xs;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: $space-2 0 0;
+  }
+}
