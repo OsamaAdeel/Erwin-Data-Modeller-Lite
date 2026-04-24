@@ -1,5 +1,24 @@
 {
   "title": "ERD Diagram",
   "subtitle": "Visualise the entire model as an entity-relationship diagram.",
-  "comingSoon": "Coming in the next release — automatic layout, zoom & pan, and column-level detail on hover."
+  "sections": {
+    "load": {
+      "heading": "1. Upload XML",
+      "subhint": "Drop an erwin-dm-v9 file to render its tables and relationships.",
+      "dropHint": "Drop your erwin XML here or click to browse",
+      "dropSubhint": "Supports erwin DM 9.x exports"
+    },
+    "view": {
+      "heading": "2. Diagram",
+      "subhint": "Drag to pan, scroll to zoom, hover an entity to highlight its relationships.",
+      "tilesEntities": "Entities",
+      "tilesRelationships": "Relationships",
+      "tilesDomains": "Domains",
+      "noEntitiesTitle": "No entities found",
+      "noEntitiesDesc": "This file parsed cleanly but contains no entities to render.",
+      "legendDrag": "Drag the canvas to pan",
+      "legendZoom": "Scroll wheel or +/− to zoom",
+      "legendHover": "Hover an entity to highlight its relationships"
+    }
+  }
 }
