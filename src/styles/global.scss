@@ -1,0 +1,15 @@
+// global.scss — entry imported once from main.tsx
+// (variables and mixins are auto-injected via vite.config.ts;
+//  Poppins is loaded via <link> in index.html for parallel fetch)
+
+@import "./reset";
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.hidden { display: none !important; }
+.muted  { color: $text-muted; }
+.mono   { font-family: $font-mono; }

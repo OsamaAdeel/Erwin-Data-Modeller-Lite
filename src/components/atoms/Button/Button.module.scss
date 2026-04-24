@@ -1,0 +1,44 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  border-radius: $radius-sm;
+  font-weight: 500;
+  font-family: $font-sans;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  text-decoration: none;
+  @include clickable;
+}
+
+.s-sm { padding: 6px 12px;  font-size: $fs-sm; }
+.s-md { padding: 9px 16px;  font-size: $fs-md; }
+.s-lg { padding: 12px 22px; font-size: $fs-lg; }
+
+.v-primary {
+  background: $primary;
+  color: #fff;
+  &:hover:not(:disabled) { background: $primary-dark; }
+}
+
+.v-outline {
+  background: $surface;
+  color: $primary;
+  border-color: $primary;
+  &:hover:not(:disabled) { background: $primary-soft; }
+}
+
+.v-ghost {
+  background: transparent;
+  color: $text-muted;
+  &:hover:not(:disabled) { background: $bg; color: $text; }
+}
+
+.v-danger {
+  background: $red;
+  color: #fff;
+  &:hover:not(:disabled) { filter: brightness(0.92); }
+}
+
+.full { width: 100%; }

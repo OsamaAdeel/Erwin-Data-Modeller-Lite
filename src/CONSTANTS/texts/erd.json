@@ -1,0 +1,5 @@
+{
+  "title": "ERD Diagram",
+  "subtitle": "Visualise the entire model as an entity-relationship diagram.",
+  "comingSoon": "Coming in the next release — automatic layout, zoom & pan, and column-level detail on hover."
+}

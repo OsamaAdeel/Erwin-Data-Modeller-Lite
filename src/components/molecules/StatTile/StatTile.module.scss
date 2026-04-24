@@ -1,0 +1,17 @@
+.tile {
+  background: #FAFBFD;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  padding: $space-3 $space-4;
+}
+.value { font-size: 28px; font-weight: 700; color: $navy; line-height: 1.1; }
+.label {
+  font-size: $fs-xs;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+.warn { background: $amber-bg; border-color: $amber-border; }
+.warn .value { color: $amber; }
+.warn .label { color: $amber; }

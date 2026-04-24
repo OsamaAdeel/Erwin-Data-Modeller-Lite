@@ -1,0 +1,138 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-3;
+
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.variantValue {
+  font-family: $font-mono;
+  font-size: $fs-md;
+  font-weight: 600;
+}
+
+.entityList {
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  background: #FAFBFD;
+  padding: $space-2 $space-3;
+
+  summary {
+    cursor: pointer;
+    color: $primary;
+    font-weight: 500;
+    padding: $space-1 0;
+  }
+
+  &[open] summary { margin-bottom: $space-3; }
+}
+
+.entityListBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.entityNames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1;
+  max-height: 240px;
+  overflow-y: auto;
+
+  li {
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: $radius-sm;
+    padding: 4px 8px;
+    font-family: $font-mono;
+    font-size: $fs-sm;
+    color: $text;
+  }
+}
+
+.entityEmpty {
+  color: $text-muted;
+  font-style: italic;
+  font-family: $font-sans !important;
+}
+
+.colsBlock {
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  background: #FAFBFD;
+  padding: $space-3;
+
+  &.locked { opacity: 0.5; pointer-events: none; }
+}
+
+.colsHeader {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.4fr 56px 56px 32px;
+  gap: $space-2;
+  font-size: $fs-xs;
+  font-weight: 600;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 $space-2 $space-2;
+
+  @include mobile { display: none; }
+}
+
+.colsList {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.colsActions {
+  margin-top: $space-3;
+}
+
+.warnings {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  padding: $space-2;
+  background: $amber-bg;
+  border: 1px solid $amber-border;
+  border-radius: $radius-sm;
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: $fs-sm;
+  color: $amber;
+}
+
+.formActions {
+  display: flex;
+  gap: $space-2;
+  align-items: center;
+}
+
+.success {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3;
+  background: $green-soft;
+  border: 1px solid rgba($green, 0.3);
+  border-radius: $radius-sm;
+  color: $green;
+}
+
+.mono {
+  font-family: $font-mono;
+  font-weight: 600;
+}

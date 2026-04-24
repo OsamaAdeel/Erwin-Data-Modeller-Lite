@@ -1,0 +1,19 @@
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.wrap {
+  width: 100%;
+  max-width: $content-max;
+  margin: 0 auto;
+  padding: $space-6 $space-6 $space-10;
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  @include mobile {
+    padding: $space-4;
+  }
+}

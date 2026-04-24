@@ -1,0 +1,17 @@
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-6;
+  background: $navy;
+  color: rgba(#fff, 0.7);
+  font-size: $fs-sm;
+  margin-top: auto;
+}
+.left { display: flex; gap: $space-2; align-items: center; }
+.dot  { opacity: 0.5; }
+.link {
+  color: rgba(#fff, 0.85);
+  text-decoration: none;
+  &:hover { color: #fff; text-decoration: underline; }
+}
