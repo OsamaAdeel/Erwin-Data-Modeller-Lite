@@ -20,10 +20,29 @@
 
 .over { border-color: $primary; background: $primary-soft; }
 .disabled { opacity: 0.6; pointer-events: none; }
+.loading {
+  cursor: progress;
+  border-color: $primary;
+  background: $primary-soft;
+}
 
 .icon { font-size: 22px; color: $primary; margin-bottom: $space-1; }
 .hint { font-weight: 500; color: $text; }
 .subhint { color: $text-muted; font-size: $fs-sm; margin-top: $space-1; }
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba($primary, 0.2);
+  border-top-color: $primary;
+  animation: filedrop-spin 720ms linear infinite;
+  margin-bottom: $space-2;
+}
+
+@keyframes filedrop-spin {
+  to { transform: rotate(360deg); }
+}
 
 .loaded {
   border: 1px solid $border;

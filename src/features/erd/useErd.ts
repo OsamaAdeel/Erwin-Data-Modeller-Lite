@@ -1,53 +1,17 @@
-import { useCallback, useMemo, useState } from "react";
-import { parseFile, XmlParseError } from "@/services/xml/parser";
-import { collectFullModel, type FullModel } from "@/services/xml/model";
-import { collectRelationships, type Relationship } from "@/services/xml/relationships";
-import { computeLayout, type LayoutResult } from "./layout";
-
-export interface ErdData {
-  filename: string;
-  variant: string;
-  model: FullModel;
-  relationships: Relationship[];
-  layout: LayoutResult;
-}
+import { useCallback, useMemo } from "react";
+import { useAppDispatch, useAppSelector } from "@/store";
+import {
+  loadFile as loadFileThunk,
+  reset as resetAction,
+} from "./erdSlice";
+export type { ErdData } from "./erdSlice";
 
 export function useErd() {
-  const [data, setData] = useState<ErdData | null>(null);
-  const [error, setError] = useState<string | undefined>();
+  const dispatch = useAppDispatch();
+  const data = useAppSelector((s) => s.erd.data);
+  const error = useAppSelector((s) => s.erd.error);
+  const loading = useAppSelector((s) => s.erd.loading);
 
-  const loadFile = useCallback(async (file: File) => {
-    setError(undefined);
-    try {
-      const parsed = await parseFile(file);
-      if (parsed.variant !== "erwin-dm-v9") {
-        setError("ERD view requires an erwin-dm-v9 file.");
-        setData(null);
-        return;
-      }
-      const model = collectFullModel(parsed.doc);
-      const relationships = collectRelationships(parsed.doc);
-      const layout = computeLayout(model.entities, relationships);
-      setData({
-        filename: file.name,
-        variant: parsed.variant,
-        model,
-        relationships,
-        layout,
-      });
-    } catch (err) {
-      const msg = err instanceof XmlParseError ? err.message : err instanceof Error ? err.message : String(err);
-      setError(msg);
-      setData(null);
-    }
-  }, []);
-
-  const reset = useCallback(() => {
-    setData(null);
-    setError(undefined);
-  }, []);
-
-  // Convenience accessors for the panel.
   const stats = useMemo(() => {
     if (!data) return null;
     return {
@@ -57,5 +21,16 @@ export function useErd() {
     };
   }, [data]);
 
-  return { data, error, stats, loadFile, reset };
+  const loadFile = useCallback(
+    (file: File) => {
+      void dispatch(loadFileThunk(file));
+    },
+    [dispatch]
+  );
+
+  const reset = useCallback(() => {
+    dispatch(resetAction());
+  }, [dispatch]);
+
+  return { data, error, loading, stats, loadFile, reset };
 }

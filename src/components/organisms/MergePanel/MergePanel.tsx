@@ -64,6 +64,7 @@ export default function MergePanel() {
             sub={t.load.sourceSub}
             slot={m.source}
             error={m.errors.source}
+            loading={m.loading.source}
             onFile={(f) => void m.loadSlot("source", f)}
           />
           <SlotDrop
@@ -72,6 +73,7 @@ export default function MergePanel() {
             sub={t.load.targetSub}
             slot={m.target}
             error={m.errors.target}
+            loading={m.loading.target}
             onFile={(f) => void m.loadSlot("target", f)}
           />
         </div>
@@ -284,9 +286,10 @@ interface SlotDropProps {
   sub: string;
   slot: { filename: string; model: { entities: unknown[]; domainIdToName: Map<string, string> } } | null;
   error?: string;
+  loading?: boolean;
   onFile: (file: File) => void;
 }
-function SlotDrop({ role, label, sub, slot, error, onFile }: SlotDropProps) {
+function SlotDrop({ role, label, sub, slot, error, loading, onFile }: SlotDropProps) {
   return (
     <div className={styles.slot}>
       <div className={styles.slotRole}>{label}</div>
@@ -296,6 +299,7 @@ function SlotDrop({ role, label, sub, slot, error, onFile }: SlotDropProps) {
         loadedName={slot?.filename}
         loadedMeta={slot ? `${slot.model.entities.length} entities · ${slot.model.domainIdToName.size} domains` : undefined}
         error={error}
+        loading={loading}
         onFile={onFile}
       />
     </div>

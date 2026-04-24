@@ -18,6 +18,7 @@ export default function AddTablePanel() {
   const {
     parsed,
     loadError,
+    loading,
     tableName,
     columns,
     success,
@@ -56,6 +57,7 @@ export default function AddTablePanel() {
           loadedName={parsed ? `${t.sections.upload.loadedPrefix} ${parsed.fileName}` : undefined}
           loadedMeta={parsed ? `${parsed.entityDict.size} entities · ${parsed.variant}` : undefined}
           error={loadError}
+          loading={loading}
           onFile={(f) => void loadFile(f)}
         />
       </Card>

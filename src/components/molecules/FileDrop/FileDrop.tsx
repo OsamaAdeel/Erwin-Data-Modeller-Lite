@@ -9,6 +9,8 @@ export interface FileDropProps {
   loadedMeta?: string;
   error?: string;
   disabled?: boolean;
+  loading?: boolean;
+  loadingHint?: string;
   onFile: (file: File) => void;
 }
 
@@ -20,15 +22,18 @@ export default function FileDrop({
   loadedMeta,
   error,
   disabled,
+  loading,
+  loadingHint = "Parsing XML…",
   onFile,
 }: FileDropProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const blocked = disabled || loading;
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragOver(false);
-    if (disabled) return;
+    if (blocked) return;
     const file = e.dataTransfer?.files?.[0];
     if (file) onFile(file);
   }
@@ -43,28 +48,39 @@ export default function FileDrop({
     <div className={styles.wrap}>
       <div
         className={`${styles.zone} ${dragOver ? styles.over : ""} ${
-          disabled ? styles.disabled : ""
-        }`}
+          blocked ? styles.disabled : ""
+        } ${loading ? styles.loading : ""}`}
         tabIndex={0}
         role="button"
         aria-label={hint}
-        onClick={() => !disabled && inputRef.current?.click()}
+        aria-busy={loading || undefined}
+        onClick={() => !blocked && inputRef.current?.click()}
         onKeyDown={(e) => {
-          if ((e.key === "Enter" || e.key === " ") && !disabled) {
+          if ((e.key === "Enter" || e.key === " ") && !blocked) {
             e.preventDefault();
             inputRef.current?.click();
           }
         }}
         onDragOver={(e) => {
           e.preventDefault();
-          if (!disabled) setDragOver(true);
+          if (!blocked) setDragOver(true);
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        <div className={styles.icon} aria-hidden>↓</div>
-        <div className={styles.hint}>{hint}</div>
-        {subhint && <div className={styles.subhint}>{subhint}</div>}
+        {loading ? (
+          <>
+            <div className={styles.spinner} aria-hidden />
+            <div className={styles.hint}>{loadingHint}</div>
+            <div className={styles.subhint}>Please wait</div>
+          </>
+        ) : (
+          <>
+            <div className={styles.icon} aria-hidden>↓</div>
+            <div className={styles.hint}>{hint}</div>
+            {subhint && <div className={styles.subhint}>{subhint}</div>}
+          </>
+        )}
         <input
           ref={inputRef}
           type="file"

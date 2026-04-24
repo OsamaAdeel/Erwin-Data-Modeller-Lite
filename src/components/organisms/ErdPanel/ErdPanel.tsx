@@ -32,6 +32,8 @@ export default function ErdPanel() {
           loadedName={erd.data?.filename}
           loadedMeta={erd.stats ? `${erd.stats.entities} entities · ${erd.stats.relationships} relationships` : undefined}
           error={erd.error}
+          loading={erd.loading}
+          loadingHint="Building diagram…"
           onFile={(f) => void erd.loadFile(f)}
         />
         {erd.data && (

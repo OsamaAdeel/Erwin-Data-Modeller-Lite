@@ -1,102 +1,27 @@
-import { useCallback, useMemo, useState } from "react";
-import {
-  MAX_COLUMNS_PER_TABLE,
-} from "@/services/ddl/oracleParser";
-import {
-  XmlParseError,
-  parseFile,
-} from "@/services/xml/parser";
-import {
-  EmitterError,
-  addEntityClassic,
-  addEntityDMv9,
-} from "@/services/xml/emitter";
-import { outputFilename, serializeDoc } from "@/services/xml/serialize";
-import type { DataType, NewColumnSpec, ParsedDoc } from "@/services/xml/types";
-import { downloadBlob } from "@/utils/download";
+import { useCallback, useMemo } from "react";
+import { useAppDispatch, useAppSelector } from "@/store";
+import type { DataType, NewColumnSpec } from "@/services/xml/types";
 import { validate, type ValidationResult } from "./validation";
-
-export interface SuccessInfo {
-  tableName: string;
-  filename: string;
-}
-
-function makeColumn(): NewColumnSpec {
-  return {
-    id: crypto.randomUUID(),
-    name: "",
-    type: "VARCHAR2",
-    size: "",
-    scale: "",
-    nullable: true,
-    pk: false,
-  };
-}
+import {
+  addColumn as addColumnAction,
+  generate as generateThunk,
+  loadFile as loadFileThunk,
+  removeColumn as removeColumnAction,
+  resetForm as resetFormAction,
+  setTableName as setTableNameAction,
+  updateColumn as updateColumnAction,
+} from "./addTableSlice";
+export type { SuccessInfo } from "./addTableSlice";
 
 export function useAddTable() {
-  const [parsed, setParsed] = useState<ParsedDoc | null>(null);
-  const [loadError, setLoadError] = useState<string | undefined>();
-  const [tableName, setTableName] = useState("");
-  const [columns, setColumns] = useState<NewColumnSpec[]>([makeColumn()]);
-  const [success, setSuccess] = useState<SuccessInfo | undefined>();
+  const dispatch = useAppDispatch();
+  const parsed = useAppSelector((s) => s.addTable.parsed);
+  const loadError = useAppSelector((s) => s.addTable.loadError);
+  const loading = useAppSelector((s) => s.addTable.loading);
+  const tableName = useAppSelector((s) => s.addTable.tableName);
+  const columns = useAppSelector((s) => s.addTable.columns);
+  const success = useAppSelector((s) => s.addTable.success);
 
-  // ---------- file load ----------
-  const loadFile = useCallback(async (file: File) => {
-    setLoadError(undefined);
-    setSuccess(undefined);
-    try {
-      const next = await parseFile(file);
-      setParsed(next);
-      resetForm();
-    } catch (err) {
-      if (err instanceof XmlParseError) setLoadError(err.message);
-      else setLoadError(err instanceof Error ? err.message : String(err));
-    }
-  }, []);
-
-  // ---------- form mutations ----------
-  function resetForm() {
-    setTableName("");
-    setColumns([makeColumn()]);
-    setSuccess(undefined);
-  }
-
-  const addColumn = useCallback(() => {
-    setColumns((prev) =>
-      prev.length >= MAX_COLUMNS_PER_TABLE ? prev : [...prev, makeColumn()]
-    );
-  }, []);
-
-  const removeColumn = useCallback((id: string) => {
-    setColumns((prev) => (prev.length <= 1 ? prev : prev.filter((c) => c.id !== id)));
-  }, []);
-
-  const updateColumn = useCallback(
-    (id: string, patch: Partial<NewColumnSpec>) => {
-      setColumns((prev) =>
-        prev.map((c) => {
-          if (c.id !== id) return c;
-          const next = { ...c, ...patch };
-          // PK columns are NOT NULL by definition; clear nullable.
-          if (patch.pk === true) next.nullable = false;
-          // Reset size/scale when type changes — old values may be invalid.
-          if (patch.type && patch.type !== c.type) {
-            next.size = "";
-            next.scale = "";
-          }
-          return next;
-        })
-      );
-    },
-    []
-  );
-
-  const setColumnType = useCallback(
-    (id: string, type: DataType) => updateColumn(id, { type }),
-    [updateColumn]
-  );
-
-  // ---------- validation ----------
   const validation: ValidationResult = useMemo(
     () =>
       validate({
@@ -107,52 +32,61 @@ export function useAddTable() {
     [tableName, columns, parsed]
   );
 
-  // ---------- generate ----------
+  const loadFile = useCallback(
+    (file: File) => {
+      void dispatch(loadFileThunk(file));
+    },
+    [dispatch]
+  );
+
+  const setTableName = useCallback(
+    (name: string) => {
+      dispatch(setTableNameAction(name));
+    },
+    [dispatch]
+  );
+
+  const addColumn = useCallback(() => {
+    dispatch(addColumnAction());
+  }, [dispatch]);
+
+  const removeColumn = useCallback(
+    (id: string) => {
+      dispatch(removeColumnAction(id));
+    },
+    [dispatch]
+  );
+
+  const updateColumn = useCallback(
+    (id: string, patch: Partial<NewColumnSpec>) => {
+      dispatch(updateColumnAction({ id, patch }));
+    },
+    [dispatch]
+  );
+
+  const setColumnType = useCallback(
+    (id: string, type: DataType) =>
+      dispatch(updateColumnAction({ id, patch: { type } })),
+    [dispatch]
+  );
+
   const generate = useCallback(() => {
-    if (!parsed) return;
     if (!validation.canSubmit) return;
-    const trimmedName = tableName.trim();
-    const trimmedCols = columns.map((c) => ({ ...c, name: c.name.trim() }));
+    void dispatch(generateThunk());
+  }, [dispatch, validation.canSubmit]);
 
-    try {
-      if (parsed.variant === "erwin-dm-v9") {
-        addEntityDMv9(parsed.doc, trimmedName, trimmedCols, parsed.domainMap);
-      } else {
-        addEntityClassic(parsed.doc, trimmedName, trimmedCols);
-      }
-    } catch (err) {
-      if (err instanceof EmitterError) {
-        setLoadError(err.message);
-        return;
-      }
-      throw err;
-    }
-
-    // Update entity dict + filename roll-forward.
-    const nextDict = new Map(parsed.entityDict);
-    nextDict.set(trimmedName.toUpperCase(), trimmedName);
-    const nextName = outputFilename(parsed.fileName);
-
-    const xml = serializeDoc(parsed.doc);
-    downloadBlob(xml, nextName, "application/xml");
-
-    setParsed({
-      ...parsed,
-      fileName: nextName,
-      entityDict: nextDict,
-    });
-    setSuccess({ tableName: trimmedName, filename: nextName });
-  }, [parsed, validation, tableName, columns]);
+  const resetForm = useCallback(() => {
+    dispatch(resetFormAction());
+  }, [dispatch]);
 
   return {
-    // state
     parsed,
     loadError,
+    loading,
     tableName,
     columns,
     success,
     validation,
-    // actions
     loadFile,
     setTableName,
     addColumn,
