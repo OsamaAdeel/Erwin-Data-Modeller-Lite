@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
@@ -25,5 +26,12 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+  },
+  test: {
+    // jsdom implements DOMParser with proper XML mime-type handling
+    // (happy-dom parses application/xml as HTML).
+    environment: "jsdom",
+    globals: false,
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });

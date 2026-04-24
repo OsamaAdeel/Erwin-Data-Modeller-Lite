@@ -1,9 +1,12 @@
+// OFSAA ERwin importer is sensitive to the XML declaration — it must include
+// standalone="no" and UTF-8. Strip whatever DOMSerializer emitted (browsers
+// vary) and prepend the canonical declaration.
+const OFSAA_PROLOG = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
+
 export function serializeDoc(doc: XMLDocument): string {
   let xml = new XMLSerializer().serializeToString(doc);
-  if (!xml.startsWith("<?xml")) {
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
-  }
-  return xml;
+  xml = xml.replace(/^<\?xml[^?]*\?>\s*/, "");
+  return `${OFSAA_PROLOG}\n${xml}`;
 }
 
 export function outputFilename(input: string): string {

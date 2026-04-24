@@ -1,7 +1,30 @@
+// OFSAA-compliant ERwin DM v9 emitter.
+//
+// Every structural choice in this file is driven by the OFSAA ERwin importer
+// rules: required field order, Derived/ReadOnly XML attributes, the
+// Null_Option_Type integer (not the legacy Nullable tag), the PK Key_Group_Type
+// = "PK" string, and cross-reference integrity. See validator.ts for the
+// machine-checkable version of those rules.
+
+import { ORACLE_RESERVED_WORDS } from "@/services/ddl/oracleParser";
 import { NS } from "./namespaces";
 import type { NewColumnSpec } from "./types";
 
 export class EmitterError extends Error {}
+
+// Max identifier length accepted by the OFSAA importer (stricter than Oracle
+// 12.2's 128 chars). Enforced at emit time only — the form-level validator in
+// features/addTable is allowed to be more permissive for non-OFSAA workflows.
+const OFSAA_MAX_IDENTIFIER_LEN = 30;
+
+const ENTITY_TYPE_REGULAR = "1";
+const ATTR_TYPE_REGULAR = "100";
+
+// Null_Option_Type: 0 = NOT NULL, 1 = NULL. Do not emit the legacy Nullable
+// tag — it trips ORA-00904 in OFSAA.
+function nullOptionType(col: NewColumnSpec): string {
+  return col.nullable ? "1" : "0";
+}
 
 function newGuid(): string {
   return `{${crypto.randomUUID().toUpperCase()}}+00000000`;
@@ -19,6 +42,22 @@ function emxEl(
   return el;
 }
 
+function orderRefArray(
+  doc: Document,
+  arrayTag: string,
+  itemTag: string,
+  ids: string[]
+): Element {
+  const arr = doc.createElementNS(NS.emx, "EMX:" + arrayTag);
+  ids.forEach((id, i) => {
+    const ref = doc.createElementNS(NS.emx, "EMX:" + itemTag);
+    ref.setAttribute("index", String(i));
+    ref.textContent = id;
+    arr.appendChild(ref);
+  });
+  return arr;
+}
+
 export function formatDatatype(col: NewColumnSpec): string {
   if (col.type === "VARCHAR2" || col.type === "CHAR") {
     return col.size ? `${col.type}(${col.size})` : col.type;
@@ -29,6 +68,57 @@ export function formatDatatype(col: NewColumnSpec): string {
     return "NUMBER";
   }
   return col.type;
+}
+
+// Logical_Data_Type per OFSAA Rule 5. Kept distinct from the Oracle physical
+// type so the importer can re-derive the physical one if ever asked to.
+export function logicalDatatype(col: NewColumnSpec): string {
+  switch (col.type) {
+    case "VARCHAR2":
+      return col.size ? `VARCHAR(${col.size})` : "VARCHAR";
+    case "CHAR":
+      return col.size ? `CHAR(${col.size})` : "CHAR";
+    case "NUMBER":
+      if (col.size && col.scale) return `DECIMAL(${col.size},${col.scale})`;
+      if (col.size) return `DECIMAL(${col.size})`;
+      return "INTEGER";
+    case "DATE":
+      return "DATE";
+    case "TIMESTAMP":
+      return "TIMESTAMP";
+    case "CLOB":
+      return "LONG";
+    case "BLOB":
+      return "LARGE BINARY";
+    default: {
+      // Defensive: if the union is ever extended and this switch isn't,
+      // throw rather than emit a blank string (Rule 5).
+      const bad = (col as NewColumnSpec).type as string;
+      throw new EmitterError(`Unknown logical type for "${bad}"`);
+    }
+  }
+}
+
+// Strict OFSAA identifier check. Raises EmitterError with the offending name,
+// does not silently truncate or quote.
+export function assertOfsaaIdentifier(name: string, kind: string): void {
+  if (!name) throw new EmitterError(`${kind} cannot be empty`);
+  if (!/^[A-Za-z]/.test(name)) {
+    throw new EmitterError(`${kind} "${name}" must start with a letter`);
+  }
+  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) {
+    throw new EmitterError(
+      `${kind} "${name}" may only contain letters, digits, and underscores`
+    );
+  }
+  if (name.length > OFSAA_MAX_IDENTIFIER_LEN) {
+    throw new EmitterError(
+      `${kind} "${name}" exceeds ${OFSAA_MAX_IDENTIFIER_LEN}-character OFSAA limit (got ${name.length})`
+    );
+  }
+  if (ORACLE_RESERVED_WORDS.has(name.toUpperCase())) {
+    throw new EmitterError(`${kind} "${name}" is an Oracle reserved word`);
+  }
 }
 
 export function pickDomain(
@@ -62,10 +152,40 @@ function findDMv9Container(doc: Document): Element | null {
       udp.getElementsByTagName("Entity_Groups")[0];
     if (eg) return eg;
   }
-  // Fallback: parent of the first existing entity
   const first = doc.getElementsByTagNameNS(NS.emx, "Entity")[0];
-  return first ? first.parentNode as Element | null : null;
+  return first ? (first.parentNode as Element | null) : null;
 }
+
+function findModelName(doc: Document): string {
+  const model = doc.getElementsByTagNameNS(NS.emx, "Model")[0];
+  if (model) {
+    const n = model.getAttribute("name");
+    if (n) return n;
+  }
+  return "Model_1";
+}
+
+// Collect every existing Key_Group name so we can reject XPK<tableName>
+// collisions before emitting (Rule 7 uniqueness).
+function collectKeyGroupNames(doc: Document): Set<string> {
+  const names = new Set<string>();
+  const groups = doc.getElementsByTagNameNS(NS.emx, "Key_Group");
+  for (const kg of Array.from(groups)) {
+    const nameAttr = kg.getAttribute("name");
+    if (nameAttr) names.add(nameAttr);
+    const props = kg.getElementsByTagNameNS(NS.emx, "Key_GroupProps")[0];
+    if (props) {
+      const nameEl = props.getElementsByTagNameNS(NS.emx, "Name")[0];
+      const text = nameEl?.textContent?.trim();
+      if (text) names.add(text);
+    }
+  }
+  return names;
+}
+
+// -------------------------------------------------------------------------
+// Classic (pre-DM-v9) emitter — untouched. OFSAA targets the DM-v9 schema;
+// classic output is still used by other tools that consume the legacy format.
 
 export function addEntityClassic(
   doc: Document,
@@ -101,6 +221,9 @@ export function addEntityClassic(
   root.appendChild(entity);
 }
 
+// -------------------------------------------------------------------------
+// OFSAA-compliant DM v9 emitter.
+
 export function addEntityDMv9(
   doc: Document,
   tableName: string,
@@ -114,6 +237,26 @@ export function addEntityDMv9(
     );
   }
 
+  // Rule 6 — identifier constraints. Fail fast with a descriptive message.
+  assertOfsaaIdentifier(tableName, "table name");
+  for (const c of cols) assertOfsaaIdentifier(c.name, "column name");
+
+  // Rule 5 — force early type validation (throws on unknown types).
+  for (const c of cols) logicalDatatype(c);
+
+  // Rule 7 — PK index name must be unique across the whole model.
+  const kgName = `XPK${tableName}`;
+  const existingKgNames = collectKeyGroupNames(doc);
+  if (existingKgNames.has(kgName)) {
+    throw new EmitterError(
+      `Primary key index "${kgName}" already exists in the model`
+    );
+  }
+
+  const modelName = findModelName(doc);
+  const ownerPathEntity = modelName;
+  const ownerPathChild = `${modelName}.${tableName}`;
+
   const colIds = cols.map(() => newGuid());
   const entityId = newGuid();
 
@@ -121,40 +264,60 @@ export function addEntityDMv9(
   entity.setAttribute("id", entityId);
   entity.setAttribute("name", tableName);
 
-  // -- EntityProps
+  // -- EntityProps (Rule 3 — fields must appear in this order) ------------
   const props = doc.createElementNS(NS.emx, "EMX:EntityProps");
   props.appendChild(emxEl(doc, "Name", tableName));
   props.appendChild(emxEl(doc, "Long_Id", entityId));
-  props.appendChild(emxEl(doc, "Type", "1"));
+  props.appendChild(
+    emxEl(doc, "Owner_Path", ownerPathEntity, {
+      Tool: "Y",
+      ReadOnly: "Y",
+      Derived: "Y",
+    })
+  );
+  props.appendChild(emxEl(doc, "Type", ENTITY_TYPE_REGULAR));
   props.appendChild(emxEl(doc, "Physical_Name", tableName, { Derived: "Y" }));
   props.appendChild(
-    emxEl(doc, "Dependent_Objects_Ref_Array", null, { ReadOnly: "Y", Derived: "Y" })
+    emxEl(doc, "Dependent_Objects_Ref_Array", null, {
+      ReadOnly: "Y",
+      Derived: "Y",
+    })
   );
-  props.appendChild(emxEl(doc, "Do_Not_Generate", "false", { Derived: "Y" }));
-
-  const attrOrder = doc.createElementNS(NS.emx, "EMX:Attributes_Order_Ref_Array");
-  colIds.forEach((cid, i) => {
-    const ref = doc.createElementNS(NS.emx, "EMX:Attributes_Order_Ref");
-    ref.setAttribute("index", String(i));
-    ref.textContent = cid;
-    attrOrder.appendChild(ref);
-  });
-  props.appendChild(attrOrder);
-
-  const physOrder = doc.createElementNS(NS.emx, "EMX:Physical_Columns_Order_Ref_Array");
-  colIds.forEach((cid, i) => {
-    const ref = doc.createElementNS(NS.emx, "EMX:Physical_Columns_Order_Ref");
-    ref.setAttribute("index", String(i));
-    ref.textContent = cid;
-    physOrder.appendChild(ref);
-  });
-  props.appendChild(physOrder);
-
+  props.appendChild(
+    emxEl(doc, "Do_Not_Generate", "false", { Derived: "Y" })
+  );
+  props.appendChild(
+    orderRefArray(
+      doc,
+      "Attributes_Order_Ref_Array",
+      "Attributes_Order_Ref",
+      colIds
+    )
+  );
+  props.appendChild(
+    orderRefArray(
+      doc,
+      "Physical_Columns_Order_Ref_Array",
+      "Physical_Columns_Order_Ref",
+      colIds
+    )
+  );
+  props.appendChild(
+    orderRefArray(doc, "Columns_Order_Ref_Array", "Columns_Order_Ref", colIds)
+  );
+  props.appendChild(
+    emxEl(doc, "User_Formatted_Name", tableName, {
+      ReadOnly: "Y",
+      Derived: "Y",
+    })
+  );
   entity.appendChild(props);
 
-  // -- Attribute_Groups
+  // -- Attribute_Groups (Rule 4) ------------------------------------------
   const attrGroups = doc.createElementNS(NS.emx, "EMX:Attribute_Groups");
   cols.forEach((col, i) => {
+    const orderStr = String(i + 1); // 1-based per Rule 4
+
     const attr = doc.createElementNS(NS.emx, "EMX:Attribute");
     attr.setAttribute("id", colIds[i]);
     attr.setAttribute("name", col.name);
@@ -162,35 +325,110 @@ export function addEntityDMv9(
     const ap = doc.createElementNS(NS.emx, "EMX:AttributeProps");
     ap.appendChild(emxEl(doc, "Name", col.name));
     ap.appendChild(emxEl(doc, "Long_Id", colIds[i]));
+    ap.appendChild(
+      emxEl(doc, "Owner_Path", ownerPathChild, {
+        Tool: "Y",
+        ReadOnly: "Y",
+        Derived: "Y",
+      })
+    );
+    ap.appendChild(emxEl(doc, "Type", ATTR_TYPE_REGULAR));
+    ap.appendChild(
+      emxEl(doc, "Physical_Data_Type", formatDatatype(col), { Derived: "Y" })
+    );
+    ap.appendChild(
+      emxEl(doc, "Null_Option_Type", nullOptionType(col), { Derived: "Y" })
+    );
+    ap.appendChild(
+      emxEl(doc, "Physical_Order", orderStr, {
+        ReadOnly: "Y",
+        Derived: "Y",
+      })
+    );
+    ap.appendChild(emxEl(doc, "Comment", null, { Derived: "Y" }));
     ap.appendChild(emxEl(doc, "Physical_Name", col.name, { Derived: "Y" }));
-    ap.appendChild(emxEl(doc, "Physical_Data_Type", formatDatatype(col), { Derived: "Y" }));
-    ap.appendChild(emxEl(doc, "Nullable", col.nullable ? "true" : "false"));
+    ap.appendChild(
+      emxEl(doc, "Logical_Data_Type", logicalDatatype(col), { Derived: "Y" })
+    );
 
     const domainId = pickDomain(col, domainMap);
     if (domainId) ap.appendChild(emxEl(doc, "Parent_Domain_Ref", domainId));
+
+    ap.appendChild(
+      emxEl(doc, "Attribute_Order", orderStr, {
+        ReadOnly: "Y",
+        Derived: "Y",
+      })
+    );
+    ap.appendChild(
+      emxEl(doc, "Column_Order", orderStr, {
+        ReadOnly: "Y",
+        Derived: "Y",
+      })
+    );
+    ap.appendChild(
+      emxEl(doc, "User_Formatted_Name", col.name, {
+        ReadOnly: "Y",
+        Derived: "Y",
+      })
+    );
+
     attr.appendChild(ap);
     attrGroups.appendChild(attr);
   });
   entity.appendChild(attrGroups);
 
-  // -- Key groups (PK)
+  // -- Key_Group (PK) (Rule 7) --------------------------------------------
   const pkCols = cols.filter((c) => c.pk);
   if (pkCols.length) {
     const kgGroups = doc.createElementNS(NS.emx, "EMX:Key_Group_Groups");
     const kgId = newGuid();
     const kg = doc.createElementNS(NS.emx, "EMX:Key_Group");
     kg.setAttribute("id", kgId);
-    kg.setAttribute("name", `XPK${tableName}`);
+    kg.setAttribute("name", kgName);
 
     const kgp = doc.createElementNS(NS.emx, "EMX:Key_GroupProps");
-    kgp.appendChild(emxEl(doc, "Name", `XPK${tableName}`));
+    kgp.appendChild(emxEl(doc, "Name", kgName));
     kgp.appendChild(emxEl(doc, "Long_Id", kgId));
-    kgp.appendChild(emxEl(doc, "Key_Group_Type", "1"));
+    kgp.appendChild(
+      emxEl(doc, "Owner_Path", ownerPathChild, {
+        Tool: "Y",
+        ReadOnly: "Y",
+        Derived: "Y",
+      })
+    );
+    kgp.appendChild(emxEl(doc, "Key_Group_Type", "PK")); // string, NOT integer
+    kgp.appendChild(emxEl(doc, "Physical_Name", kgName, { Derived: "Y" }));
+    kgp.appendChild(emxEl(doc, "Generate_As_Constraint", "true"));
+    kgp.appendChild(
+      emxEl(doc, "Dependent_Objects_Ref_Array", null, {
+        ReadOnly: "Y",
+        Derived: "Y",
+      })
+    );
+    kgp.appendChild(
+      emxEl(doc, "Do_Not_Generate", "false", { Derived: "Y" })
+    );
+    kgp.appendChild(emxEl(doc, "Constraint_Name", kgName, { Derived: "Y" }));
+    kgp.appendChild(emxEl(doc, "Is_Unique", "true", { Derived: "Y" }));
+    kgp.appendChild(
+      emxEl(doc, "User_Formatted_Name", kgName, {
+        ReadOnly: "Y",
+        Derived: "Y",
+      })
+    );
 
-    const kmOrder = doc.createElementNS(NS.emx, "EMX:Key_Group_Members_Order_Ref_Array");
+    // Members (order array + full member groups)
     const kmIds = pkCols.map(() => newGuid());
+    const kmOrder = doc.createElementNS(
+      NS.emx,
+      "EMX:Key_Group_Members_Order_Ref_Array"
+    );
     pkCols.forEach((_, i) => {
-      const ref = doc.createElementNS(NS.emx, "EMX:Key_Group_Members_Order_Ref");
+      const ref = doc.createElementNS(
+        NS.emx,
+        "EMX:Key_Group_Members_Order_Ref"
+      );
       ref.setAttribute("index", String(i));
       ref.textContent = kmIds[i];
       kmOrder.appendChild(ref);
@@ -198,10 +436,14 @@ export function addEntityDMv9(
     kgp.appendChild(kmOrder);
     kg.appendChild(kgp);
 
-    const kmGroups = doc.createElementNS(NS.emx, "EMX:Key_Group_Member_Groups");
+    const kmGroups = doc.createElementNS(
+      NS.emx,
+      "EMX:Key_Group_Member_Groups"
+    );
     pkCols.forEach((pk, i) => {
       const km = doc.createElementNS(NS.emx, "EMX:Key_Group_Member");
       km.setAttribute("id", kmIds[i]);
+
       const kmp = doc.createElementNS(NS.emx, "EMX:Key_Group_MemberProps");
       kmp.appendChild(emxEl(doc, "Long_Id", kmIds[i]));
       const ar = doc.createElementNS(NS.emx, "EMX:Attribute_Ref");
