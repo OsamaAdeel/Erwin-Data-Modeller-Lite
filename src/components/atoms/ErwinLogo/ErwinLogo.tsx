@@ -35,10 +35,10 @@ export default function ErwinLogo({
       </text>
 
       {/* Stem of the 'i' */}
-      <rect x="238" y="45" width="10" height="55" />
+      <rect x="200" y="45" width="10" height="55" />
 
       {/* Special square dot of the 'i' */}
-      <rect x="235" y="24" width="15" height="14" />
+      <rect x="199" y="24" width="15" height="14" />
 
       {/* Beam/triangle shape extending from the 'i' */}
       <polygon points="255,29 345,14 345,40" />
