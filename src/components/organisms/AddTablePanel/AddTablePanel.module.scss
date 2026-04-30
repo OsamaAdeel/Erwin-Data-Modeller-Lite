@@ -316,6 +316,22 @@
   flex-wrap: wrap;
 }
 
+// Badge wrapper that remounts on each isFinalized flip so the
+// keyframe runs exactly once per state transition.
+.finalizeBadgeWrap {
+  display: inline-flex;
+}
+
+.finalizeBadgeFlash {
+  animation: finalize-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+}
+
+@keyframes finalize-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
 .finalizeSummary {
   display: flex;
   align-items: center;
