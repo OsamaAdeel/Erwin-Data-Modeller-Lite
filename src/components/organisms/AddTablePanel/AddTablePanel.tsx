@@ -93,8 +93,20 @@ export default function AddTablePanel() {
     if (confirmed) finalize();
   }
 
+  // ⌘/Ctrl+Enter from inside the panel commits the staged table. The
+  // handler is on the panel root, so the bubble path naturally enforces
+  // the "panel form has focus" requirement: a key event only reaches us
+  // if focus was somewhere inside the wrap to begin with.
+  function handlePanelKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    if (e.key !== "Enter") return;
+    if (!validation.canSubmit) return;
+    e.preventDefault();
+    commitTable();
+  }
+
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} onKeyDown={handlePanelKeyDown}>
       <Card step={1} title={t.sections.upload.heading}>
         {parsed && !showUploaders ? (
           <div className={styles.loadedSummary}>

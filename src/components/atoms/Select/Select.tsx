@@ -168,6 +168,9 @@ export default function Select({
 
   function handleKeyDown(e: ReactKeyboardEvent<HTMLButtonElement>) {
     if (disabled) return;
+    // Modifier-keyed combos are reserved for the surrounding form
+    // (e.g. ⌘/Ctrl+Enter to submit). Let them bubble unmodified.
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
 
     if (!open) {
       if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {

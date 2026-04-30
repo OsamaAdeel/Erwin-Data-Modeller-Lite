@@ -1,0 +1,145 @@
+// Modal chrome — backdrop, dialog, header, body, key chips.
+// Theme-aware via the existing CSS custom properties (no hardcoded colours
+// outside the backdrop's translucent black, which works in both themes).
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: $space-5;
+  animation: hotkeys-backdrop-in 120ms ease-out;
+}
+
+@keyframes hotkeys-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dialog {
+  width: 100%;
+  max-width: 540px;
+  max-height: calc(100vh - #{$space-8});
+  overflow: auto;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-lg;
+  animation: hotkeys-dialog-in 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes hotkeys-dialog-in {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-4 $space-5;
+  border-bottom: 1px solid $border;
+}
+
+.title {
+  font-size: $fs-lg;
+  font-weight: 600;
+  color: $text;
+  margin: 0;
+}
+
+.close {
+  width: 32px;
+  height: 32px;
+  border-radius: $radius-sm;
+  background: transparent;
+  color: $text-muted;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover { background: $surface-alt; color: $text; }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: 2px;
+  }
+}
+
+.body {
+  padding: $space-4 $space-5 $space-5;
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.sectionHeading {
+  font-size: $fs-xs;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: $text-muted;
+  margin: 0;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: $space-4;
+  row-gap: $space-2;
+  margin: 0;
+  align-items: center;
+}
+
+.keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.keyGroup {
+  display: inline-flex;
+  align-items: center;
+}
+
+// <kbd> chip: subtle bottom-heavy border for the keycap effect.
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid $border-2;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: $surface-alt;
+  color: $text;
+  font-family: $font-mono;
+  font-size: $fs-sm;
+  font-weight: 500;
+}
+
+.plus {
+  color: $text-muted;
+  font-size: $fs-sm;
+  margin: 0 4px;
+}
+
+.label {
+  margin: 0;
+  font-size: $fs-md;
+  color: $text;
+}
