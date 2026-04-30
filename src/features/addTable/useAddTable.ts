@@ -5,20 +5,29 @@ import { validate, type ValidationResult } from "./validation";
 import {
   addColumn as addColumnAction,
   cancelEdit as cancelEditAction,
+  clearFolder as clearFolderAction,
   commitTable as commitTableAction,
   deleteStagedTable as deleteStagedTableAction,
   editStagedTable as editStagedTableAction,
   finalize as finalizeAction,
   generate as generateThunk,
   loadFile as loadFileThunk,
+  pickFolder as pickFolderThunk,
+  refreshFolder as refreshFolderThunk,
   removeColumn as removeColumnAction,
   resetForm as resetFormAction,
+  selectFolderFile as selectFolderFileThunk,
   setDescription as setDescriptionAction,
   setTableName as setTableNameAction,
   unfinalize as unfinalizeAction,
   updateColumn as updateColumnAction,
 } from "./addTableSlice";
-export type { StagedTable, SuccessInfo } from "./addTableSlice";
+export type {
+  FolderFileMeta,
+  PreferredFolderState,
+  StagedTable,
+  SuccessInfo,
+} from "./addTableSlice";
 
 export function useAddTable() {
   const dispatch = useAppDispatch();
@@ -32,6 +41,7 @@ export function useAddTable() {
   const editingId = useAppSelector((s) => s.addTable.editingId);
   const isFinalized = useAppSelector((s) => s.addTable.isFinalized);
   const success = useAppSelector((s) => s.addTable.success);
+  const folder = useAppSelector((s) => s.addTable.folder);
 
   const validation: ValidationResult = useMemo(
     () =>
@@ -135,6 +145,25 @@ export function useAddTable() {
     dispatch(resetFormAction());
   }, [dispatch]);
 
+  const pickFolder = useCallback(() => {
+    void dispatch(pickFolderThunk());
+  }, [dispatch]);
+
+  const refreshFolder = useCallback(() => {
+    void dispatch(refreshFolderThunk());
+  }, [dispatch]);
+
+  const selectFolderFile = useCallback(
+    (id: string) => {
+      void dispatch(selectFolderFileThunk(id));
+    },
+    [dispatch]
+  );
+
+  const clearFolder = useCallback(() => {
+    dispatch(clearFolderAction());
+  }, [dispatch]);
+
   const canFinalize = !isFinalized && stagedTables.length > 0;
   const canGenerate = isFinalized && stagedTables.length > 0;
 
@@ -153,6 +182,7 @@ export function useAddTable() {
     validation,
     canFinalize,
     canGenerate,
+    folder,
     loadFile,
     setTableName,
     setDescription,
@@ -168,5 +198,9 @@ export function useAddTable() {
     unfinalize,
     generate,
     resetForm,
+    pickFolder,
+    refreshFolder,
+    selectFolderFile,
+    clearFolder,
   };
 }

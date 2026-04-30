@@ -1,0 +1,170 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  background: #FAFBFD;
+}
+
+.label {
+  font-size: $fs-xs;
+  font-weight: 600;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: $space-1;
+}
+
+.hint {
+  color: $text-muted;
+  font-size: $fs-sm;
+}
+
+// Empty state -------------------------------------------------------------
+
+.emptyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+// Active state ------------------------------------------------------------
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.folderName {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  font-family: $font-mono;
+  font-weight: 600;
+  font-size: $fs-md;
+  color: $text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.folderIcon { font-size: 16px; }
+
+.headerActions {
+  display: flex;
+  gap: $space-1;
+  flex-wrap: wrap;
+}
+
+.loadingBar {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: $text-muted;
+  font-size: $fs-sm;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba($primary, 0.2);
+  border-top-color: $primary;
+  animation: folder-spin 720ms linear infinite;
+}
+
+@keyframes folder-spin {
+  to { transform: rotate(360deg); }
+}
+
+.emptyList {
+  color: $text-muted;
+  font-size: $fs-sm;
+  font-style: italic;
+}
+
+.error {
+  border: 1px solid $red;
+  background: $red-bg;
+  color: $red;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+  font-size: $fs-sm;
+}
+
+.selectedRow {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  flex-wrap: wrap;
+  padding: $space-2 $space-3;
+  background: $green-soft;
+  border: 1px solid rgba($green, 0.3);
+  border-left: 4px solid $green;
+  border-radius: $radius-sm;
+}
+
+.selectedMeta {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+  flex-wrap: wrap;
+  font-size: $fs-sm;
+  color: $text;
+}
+
+.selectedName {
+  font-family: $font-mono;
+  font-weight: 600;
+}
+
+.dot { color: $text-dim; }
+
+.dropdownWrap {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: $fs-sm;
+  color: $text-muted;
+}
+
+.dropdownLabel { white-space: nowrap; }
+
+.dropdown {
+  flex: 1;
+  min-width: 0;
+  font-family: $font-mono;
+  font-size: $fs-sm;
+  padding: 6px 8px;
+  border: 1px solid $border-2;
+  border-radius: $radius-sm;
+  background: $surface;
+  color: $text;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: $primary;
+    box-shadow: 0 0 0 2px rgba($primary, 0.18);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

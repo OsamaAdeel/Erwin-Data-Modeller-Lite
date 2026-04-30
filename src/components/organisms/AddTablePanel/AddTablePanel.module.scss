@@ -4,6 +4,26 @@
   gap: $space-5;
 }
 
+.uploadSeparator {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  margin: $space-3 0;
+  font-size: $fs-xs;
+  font-weight: 500;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: $border;
+  }
+}
+
 .tileGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

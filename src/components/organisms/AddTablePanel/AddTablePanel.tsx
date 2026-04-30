@@ -6,6 +6,7 @@ import Input from "@/components/atoms/Input";
 import Badge from "@/components/atoms/Badge";
 import Field from "@/components/molecules/Field";
 import FileDrop from "@/components/molecules/FileDrop";
+import FolderPicker from "@/components/molecules/FolderPicker";
 import StatTile from "@/components/molecules/StatTile";
 import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
@@ -44,6 +45,11 @@ export default function AddTablePanel() {
     finalize,
     unfinalize,
     generate,
+    folder,
+    pickFolder,
+    refreshFolder,
+    selectFolderFile,
+    clearFolder,
   } = useAddTable();
 
   const filteredEntities = useMemo(() => {
@@ -73,6 +79,14 @@ export default function AddTablePanel() {
   return (
     <div className={styles.wrap}>
       <Card step={1} title={t.sections.upload.heading}>
+        <FolderPicker
+          state={folder}
+          onPick={pickFolder}
+          onRefresh={refreshFolder}
+          onSelectFile={selectFolderFile}
+          onClear={clearFolder}
+        />
+        <div className={styles.uploadSeparator} aria-hidden>or upload a single file</div>
         <FileDrop
           hint={t.sections.upload.dropHint}
           subhint={t.sections.upload.dropSubhint}
