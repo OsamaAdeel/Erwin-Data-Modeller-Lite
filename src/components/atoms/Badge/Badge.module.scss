@@ -11,7 +11,7 @@
 }
 
 .t-neutral { background: $bg;          color: $text-muted; border-color: $border; }
-.t-primary { background: $primary-soft; color: $primary;    border-color: rgba($primary, 0.25); }
-.t-success { background: $green-soft;   color: $green;      border-color: rgba($green, 0.25); }
+.t-primary { background: $primary-soft; color: $primary;    border-color: rgba(var(--color-primary-rgb), 0.25); }
+.t-success { background: $green-soft;   color: $green;      border-color: rgba(var(--color-green-rgb), 0.25); }
 .t-warning { background: $amber-bg;     color: $amber;      border-color: $amber-border; }
-.t-danger  { background: $red-bg;       color: $red;        border-color: rgba($red, 0.25); }
+.t-danger  { background: $red-bg;       color: $red;        border-color: rgba(var(--color-red-rgb), 0.25); }

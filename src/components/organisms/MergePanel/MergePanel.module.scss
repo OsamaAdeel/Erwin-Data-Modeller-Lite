@@ -46,7 +46,7 @@
 
 .noop {
   background: $green-soft;
-  border: 1px solid rgba($green, 0.3);
+  border: 1px solid rgba(var(--color-green-rgb), 0.3);
   color: $green;
   padding: $space-3 $space-4;
   border-radius: $radius-sm;
@@ -74,7 +74,7 @@
 .pane {
   border: 1px solid $border;
   border-radius: $radius;
-  background: #FAFBFD;
+  background: $surface-alt;
   display: flex;
   flex-direction: column;
   min-height: 320px;
@@ -251,7 +251,7 @@
   gap: $space-2;
   padding: $space-2 $space-3;
   background: $green-soft;
-  border: 1px solid rgba($green, 0.3);
+  border: 1px solid rgba(var(--color-green-rgb), 0.3);
   border-radius: $radius-sm;
   color: $green;
   font-size: $fs-md;
@@ -292,7 +292,7 @@
   }
 
   pre {
-    background: #FAFBFD;
+    background: $surface-alt;
     border: 1px solid $border;
     border-radius: $radius-sm;
     padding: $space-3;

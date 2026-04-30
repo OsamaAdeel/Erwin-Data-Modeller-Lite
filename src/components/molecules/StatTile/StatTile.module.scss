@@ -1,10 +1,10 @@
 .tile {
-  background: #FAFBFD;
+  background: $surface-alt;
   border: 1px solid $border;
   border-radius: $radius-sm;
   padding: $space-3 $space-4;
 }
-.value { font-size: 28px; font-weight: 700; color: $navy; line-height: 1.1; }
+.value { font-size: 28px; font-weight: 700; color: $text; line-height: 1.1; }
 .label {
   font-size: $fs-xs;
   color: $text-muted;

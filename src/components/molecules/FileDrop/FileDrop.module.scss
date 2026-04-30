@@ -5,7 +5,7 @@
   border-radius: $radius;
   padding: $space-8 $space-6;
   text-align: center;
-  background: #FAFBFD;
+  background: $surface-alt;
   cursor: pointer;
   transition: background-color 120ms ease, border-color 120ms ease;
   min-height: 160px;
@@ -34,7 +34,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 3px solid rgba($primary, 0.2);
+  border: 3px solid rgba(var(--color-primary-rgb), 0.2);
   border-top-color: $primary;
   animation: filedrop-spin 720ms linear infinite;
   margin-bottom: $space-2;
