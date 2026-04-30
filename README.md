@@ -123,9 +123,9 @@ sequenceDiagram
     addTableSlice->>Refs: setParsedDoc(parseId, doc)
 
     loop for each new table
-        User->>useAddTable: fill name + columns; click Add table
+        User->>useAddTable: fill name + columns, click Add table
         useAddTable->>addTableSlice: dispatch(commitTable)
-        addTableSlice->>addTableSlice: validate + push to stagedTables[]
+        addTableSlice->>addTableSlice: validate and append to stagedTables
     end
 
     User->>useAddTable: click Finalize model
