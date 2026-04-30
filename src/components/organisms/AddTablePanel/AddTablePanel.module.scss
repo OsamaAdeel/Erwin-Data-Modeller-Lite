@@ -199,6 +199,52 @@
   margin-top: $space-3;
 }
 
+// Toolbar above the column grid (currently just the "Paste DDL" toggle).
+.colsToolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: $space-2;
+}
+
+// Paste-DDL alternate mode for the .colsBlock.
+.ddlPaste {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.ddlIntro {
+  font-size: $fs-sm;
+  color: $text-muted;
+  line-height: 1.5;
+
+  code {
+    font-family: $font-mono;
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: 3px;
+    padding: 0 4px;
+  }
+}
+
+.ddlActions {
+  display: flex;
+  gap: $space-2;
+}
+
+.ddlWarnings {
+  background: $amber-bg;
+  border: 1px solid $amber-border;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+  font-size: $fs-sm;
+  color: $amber;
+
+  strong { display: block; margin-bottom: $space-1; }
+  ul { margin: 0; padding-left: $space-4; }
+  li { margin: 2px 0; }
+}
+
 .warnings {
   display: flex;
   flex-direction: column;

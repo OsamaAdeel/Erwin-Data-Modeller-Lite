@@ -17,6 +17,7 @@ import {
   pickFolder as pickFolderThunk,
   refreshFolder as refreshFolderThunk,
   removeColumn as removeColumnAction,
+  replaceColumns as replaceColumnsAction,
   reorderColumns as reorderColumnsAction,
   resetForm as resetFormAction,
   selectFolderFile as selectFolderFileThunk,
@@ -106,6 +107,13 @@ export function useAddTable() {
   const reorderColumns = useCallback(
     (fromId: string, toId: string, before: boolean) => {
       dispatch(reorderColumnsAction({ fromId, toId, before }));
+    },
+    [dispatch]
+  );
+
+  const replaceColumns = useCallback(
+    (next: NewColumnSpec[]) => {
+      dispatch(replaceColumnsAction(next));
     },
     [dispatch]
   );
@@ -216,6 +224,7 @@ export function useAddTable() {
     setDescription,
     addColumn,
     removeColumn,
+    replaceColumns,
     reorderColumns,
     updateColumn,
     setColumnType,

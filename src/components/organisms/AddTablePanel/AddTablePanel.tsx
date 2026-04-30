@@ -4,6 +4,7 @@ import Button from "@/components/atoms/Button";
 import Card from "@/components/atoms/Card";
 import Input from "@/components/atoms/Input";
 import Badge from "@/components/atoms/Badge";
+import Textarea from "@/components/atoms/Textarea";
 import Field from "@/components/molecules/Field";
 import ConfirmModal from "@/components/molecules/ConfirmModal";
 import FileDrop from "@/components/molecules/FileDrop";
@@ -13,6 +14,7 @@ import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
 import type { StagedTable } from "@/features/addTable/useAddTable";
 import { generateNextFileName } from "@/services/xml/serialize";
+import { parseOracleDdl } from "@/services/ddl/ddlParser";
 import type { OfsaaValidationResult, Violation } from "@/services/xml/validator";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
@@ -26,6 +28,10 @@ export default function AddTablePanel() {
   const [showUploaders, setShowUploaders] = useState(true);
   // Confirm modal for the finalize action (replaces window.confirm).
   const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
+  // "Paste DDL" mode swaps the column grid for a textarea + Parse button.
+  const [ddlMode, setDdlMode] = useState(false);
+  const [ddlText, setDdlText] = useState("");
+  const [ddlWarnings, setDdlWarnings] = useState<string[]>([]);
   const {
     parsed,
     loadError,
@@ -59,6 +65,7 @@ export default function AddTablePanel() {
     validateModel,
     validationResult,
     validating,
+    replaceColumns,
     folder,
     pickFolder,
     refreshFolder,
@@ -244,34 +251,88 @@ export default function AddTablePanel() {
             </div>
 
             <div className={`${styles.colsBlock} ${!validation.tableNameValid ? styles.colsLocked : ""}`}>
-              <div className={styles.colsHeader}>
-                <span title="Drag to reorder">⋮⋮</span>
-                <span>Name</span>
-                <span>Type</span>
-                <span>Size / scale</span>
-                <span title="Nullable">Null</span>
-                <span title="Primary key">PK</span>
-                <span />
-              </div>
-              <div className={styles.colsList}>
-                {columns.map((c) => (
-                  <ColumnRow
-                    key={c.id}
-                    column={c}
-                    error={errorByColId.get(c.id)}
-                    isOnly={columns.length === 1}
-                    locked={formLocked}
-                    onChange={(patch) => updateColumn(c.id, patch)}
-                    onRemove={() => removeColumn(c.id)}
-                    onReorder={reorderColumns}
-                  />
-                ))}
-              </div>
-              <div className={styles.colsActions}>
-                <Button variant="outline" size="sm" onClick={addColumn} disabled={formLocked}>
-                  + Add column
-                </Button>
-              </div>
+              {ddlMode ? (
+                <DdlPasteArea
+                  value={ddlText}
+                  warnings={ddlWarnings}
+                  disabled={formLocked}
+                  onChange={setDdlText}
+                  onCancel={() => {
+                    setDdlMode(false);
+                    setDdlText("");
+                    setDdlWarnings([]);
+                  }}
+                  onParse={() => {
+                    const result = parseOracleDdl(ddlText);
+                    if (result.columns.length === 0) {
+                      setDdlWarnings([
+                        "No columns parsed from this DDL.",
+                        ...result.warnings,
+                      ]);
+                      return;
+                    }
+                    if (result.tableName && !tableName.trim()) {
+                      setTableName(result.tableName);
+                    }
+                    replaceColumns(result.columns);
+                    setDdlMode(false);
+                    setDdlText("");
+                    setDdlWarnings(result.warnings);
+                  }}
+                />
+              ) : (
+                <>
+                  <div className={styles.colsToolbar}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDdlMode(true)}
+                      disabled={formLocked}
+                      title="Paste a CREATE TABLE statement; we'll fill the column rows for you"
+                    >
+                      Paste DDL…
+                    </Button>
+                  </div>
+                  <div className={styles.colsHeader}>
+                    <span title="Drag to reorder">⋮⋮</span>
+                    <span>Name</span>
+                    <span>Type</span>
+                    <span>Size / scale</span>
+                    <span title="Nullable">Null</span>
+                    <span title="Primary key">PK</span>
+                    <span />
+                  </div>
+                  <div className={styles.colsList}>
+                    {columns.map((c) => (
+                      <ColumnRow
+                        key={c.id}
+                        column={c}
+                        error={errorByColId.get(c.id)}
+                        isOnly={columns.length === 1}
+                        locked={formLocked}
+                        onChange={(patch) => updateColumn(c.id, patch)}
+                        onRemove={() => removeColumn(c.id)}
+                        onReorder={reorderColumns}
+                      />
+                    ))}
+                  </div>
+                  <div className={styles.colsActions}>
+                    <Button variant="outline" size="sm" onClick={addColumn} disabled={formLocked}>
+                      + Add column
+                    </Button>
+                  </div>
+                  {ddlWarnings.length > 0 && (
+                    <div className={styles.ddlWarnings}>
+                      <strong>Imported with warnings:</strong>
+                      <ul>
+                        {ddlWarnings.map((w, i) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {validation.warnings.length > 0 && (
@@ -473,6 +534,67 @@ function DownloadIcon() {
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
+  );
+}
+
+// Paste DDL textarea + actions. Lives where the column grid normally
+// renders, parented by the same .colsBlock so visual constraints carry.
+function DdlPasteArea({
+  value,
+  warnings,
+  disabled,
+  onChange,
+  onParse,
+  onCancel,
+}: {
+  value: string;
+  warnings: string[];
+  disabled: boolean;
+  onChange: (v: string) => void;
+  onParse: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className={styles.ddlPaste}>
+      <div className={styles.ddlIntro}>
+        Paste a <code>CREATE TABLE</code> statement (or just the column
+        list). Common Oracle types are recognised; lines we can't parse
+        become warnings.
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={10}
+        disabled={disabled}
+        placeholder={`CREATE TABLE CUSTOMERS (
+  CUSTOMER_ID NUMBER NOT NULL,
+  CUSTOMER_NAME VARCHAR2(100) NOT NULL,
+  EMAIL VARCHAR2(120),
+  CREATED_AT DATE NOT NULL,
+  PRIMARY KEY (CUSTOMER_ID)
+);`}
+        spellCheck={false}
+        autoComplete="off"
+      />
+      {warnings.length > 0 && (
+        <div className={styles.ddlWarnings}>
+          <strong>Couldn't parse:</strong>
+          <ul>
+            {warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className={styles.ddlActions}>
+        <Button onClick={onParse} disabled={disabled || !value.trim()}>
+          Parse DDL
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
   );
 }
 

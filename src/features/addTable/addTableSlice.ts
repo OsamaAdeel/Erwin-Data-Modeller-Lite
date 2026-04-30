@@ -463,6 +463,16 @@ const slice = createSlice({
       }
     },
     /**
+     * Replace the entire columns list. Used by the "Paste DDL" mode to
+     * swap the user-typed grid for a parsed result in one shot. Empty
+     * payloads are a no-op so the form always has at least one row.
+     */
+    replaceColumns(state, action: PayloadAction<NewColumnSpec[]>) {
+      if (action.payload.length === 0) return;
+      state.columns = action.payload;
+      state.validationResult = null;
+    },
+    /**
      * Re-position a column relative to another by id.
      * `before` determines whether the moved row lands before or after
      * the target row (set from the cursor's vertical half over the
@@ -684,6 +694,7 @@ export const {
   setDescription,
   addColumn,
   removeColumn,
+  replaceColumns,
   reorderColumns,
   updateColumn,
   resetForm,
