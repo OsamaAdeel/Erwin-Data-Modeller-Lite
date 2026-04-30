@@ -10,7 +10,7 @@
 import { NS } from "@/services/xml/namespaces";
 import { collectFullModel, type FullModel, type ModelColumn, type ModelEntity } from "@/services/xml/model";
 import { parseText } from "@/services/xml/parser";
-import { outputFilename, serializeDoc } from "@/services/xml/serialize";
+import { generateNextFileName, serializeDoc } from "@/services/xml/serialize";
 import type { MergeReport } from "./types";
 
 export class MergeExecuteError extends Error {}
@@ -309,7 +309,7 @@ export function executeMerge(input: ExecuteInput): MergeReport {
   }
 
   return {
-    outputFilename: outputFilename(targetFilename),
+    outputFilename: generateNextFileName(targetFilename),
     xml,
     actions,
     warnings,

@@ -9,15 +9,36 @@ export function serializeDoc(doc: XMLDocument): string {
   return `${OFSAA_PROLOG}\n${xml}`;
 }
 
-export function outputFilename(input: string): string {
-  const m = input.match(/^(.*_[Vv])(\d+)\.xml$/i);
-  if (m) {
-    const prefix = m[1];
-    const num = m[2];
-    const nextNum = (parseInt(num, 10) + 1).toString();
-    const padded =
-      nextNum.length < num.length ? nextNum.padStart(num.length, "0") : nextNum;
-    return `${prefix}${padded}.xml`;
+// Match a `_v<digits>` (case-insensitive) immediately before the extension.
+const VERSION_SUFFIX = /^(.*)(_[vV])(\d+)$/;
+
+/**
+ * Roll the filename forward to the next version.
+ *   model.xml             → model_v1.xml
+ *   model_v1.xml          → model_v2.xml
+ *   model_v9.xml          → model_v10.xml
+ *   customer_data_v10.xml → customer_data_v11.xml
+ *   model_V2.xml          → model_V3.xml      (preserves marker case)
+ *   model                 → model_v1.xml      (no extension → append .xml)
+ *   model_v2_v3.xml       → model_v2_v4.xml   (last _v wins)
+ *   "customer data.xml"   → "customer data_v1.xml" (spaces preserved)
+ */
+export function generateNextFileName(fileName: string): string {
+  const trimmed = (fileName ?? "").trim();
+  if (!trimmed) return "untitled_v1.xml";
+
+  // Split off the trailing extension if there is one. Leading-dot names
+  // (".xml") and trailing-dot names ("foo.") are treated as extension-less.
+  const lastDot = trimmed.lastIndexOf(".");
+  const hasExt = lastDot > 0 && lastDot < trimmed.length - 1;
+  const base = hasExt ? trimmed.slice(0, lastDot) : trimmed;
+
+  // System only emits XML; force .xml regardless of the input extension.
+  const match = base.match(VERSION_SUFFIX);
+  if (match) {
+    const [, prefix, vMarker, numStr] = match;
+    const next = parseInt(numStr, 10) + 1;
+    return `${prefix}${vMarker}${next}.xml`;
   }
-  return `updated_${input}`;
+  return `${base}_v1.xml`;
 }

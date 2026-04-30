@@ -48,11 +48,12 @@
       "generateBtn": "Generate XML",
       "confirmFinalize": "Finalize the model? You won't be able to edit tables until you unfinalize.",
       "needStagedHint": "Queue at least one table to enable finalization.",
-      "needFinalizeHint": "Finalize the model to enable XML generation."
+      "needFinalizeHint": "Finalize the model to enable XML generation.",
+      "nextFilePreview": "New file will be saved as:"
     }
   },
   "messages": {
     "addSuccess": "XML generated — download started.",
-    "downloadHint": "Filenames ending in _V<n>.xml are bumped to _V<n+1>.xml; otherwise an updated_ prefix is added."
+    "downloadHint": "Files ending in _v<n>.xml are bumped to _v<n+1>.xml; files without a version get _v1 appended."
   }
 }

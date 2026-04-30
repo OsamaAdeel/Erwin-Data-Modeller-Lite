@@ -269,6 +269,18 @@
   font-size: $fs-md;
 }
 
+.nextFilePreview {
+  margin-top: $space-2;
+  color: $text-muted;
+  font-size: $fs-sm;
+}
+
+.mono {
+  font-family: $font-mono;
+  font-weight: 600;
+  color: $text;
+}
+
 .log {
   margin-top: $space-2;
 

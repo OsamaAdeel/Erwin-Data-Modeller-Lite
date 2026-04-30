@@ -263,6 +263,10 @@ export default function MergePanel() {
               <span>{t.result.unresolved.replace("{n}", String(m.result.counts.unresolved))}</span>
             </div>
           )}
+          <div className={styles.nextFilePreview}>
+            {t.result.nextFilePreview}{" "}
+            <code className={styles.mono}>{m.result.report.outputFilename}</code>
+          </div>
           <div className={styles.actionsRow}>
             <Button onClick={m.downloadXml}>{t.result.downloadXml}</Button>
             <Button variant="outline" onClick={m.downloadReport}>{t.result.downloadReport}</Button>

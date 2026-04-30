@@ -39,7 +39,8 @@
       "another": "Merge another pair",
       "addedTables": "Added {n} table(s)",
       "addedColumns": "Added {n} column(s) to existing tables",
-      "unresolved": "{n} conflict(s) left unresolved (see report)"
+      "unresolved": "{n} conflict(s) left unresolved (see report)",
+      "nextFilePreview": "New file will be saved as:"
     }
   }
 }
