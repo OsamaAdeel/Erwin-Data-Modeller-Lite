@@ -142,6 +142,84 @@ sequenceDiagram
     addTableSlice->>User: download augmented XML
 ```
 
+### Data flow — Merge Models
+
+Two DM 9.x files are loaded into separate slots, diffed in memory, picked over with an arrow-driven UI, then merged into a fresh parse of the target so the source is never trusted for object identity.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant FileDrop
+    participant useMerge
+    participant mergeSlice
+    participant parser
+    participant modelSvc as model<br/>(collectFullModel)
+    participant diff
+    participant execute as execute<br/>(executeMerge)
+
+    Note over User: Step 1 — load source and target
+    User->>FileDrop: drop source XML
+    FileDrop->>mergeSlice: dispatch(loadSlot source)
+    mergeSlice->>parser: parseFile
+    parser-->>mergeSlice: doc + variant
+    mergeSlice->>modelSvc: collectFullModel(doc)
+    modelSvc-->>mergeSlice: FullModel (entities, domains)
+    User->>FileDrop: drop target XML
+    FileDrop->>mergeSlice: dispatch(loadSlot target)
+    mergeSlice->>modelSvc: collectFullModel(doc)
+
+    Note over User: Step 2 — compute the plan
+    User->>useMerge: click Compute
+    useMerge->>mergeSlice: dispatch(compute)
+    mergeSlice->>diff: computePlan(source, target)
+    diff-->>mergeSlice: tablesMissing + columnsMissing + conflicts
+
+    loop arrow-driven picker
+        User->>useMerge: move row pending to staged
+        useMerge->>mergeSlice: dispatch(moveRow)
+    end
+
+    Note over User: Step 3 — execute the merge
+    User->>useMerge: click Execute
+    useMerge->>mergeSlice: dispatch(execute)
+    mergeSlice->>execute: executeMerge(source, targetXml, staged)
+    execute-->>mergeSlice: MergeReport (xml, actions, warnings)
+    mergeSlice->>User: download XML + report
+```
+
+### Data flow — ERD Diagram
+
+Single-file load. The slice runs three pure transforms in order — model projection, relationship extraction, dagre layout — and the panel renders the result as an interactive SVG.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant FileDrop
+    participant useErd
+    participant erdSlice
+    participant parser
+    participant modelSvc as model<br/>(collectFullModel)
+    participant rel as relationships<br/>(collectRelationships)
+    participant layout as layout<br/>(dagre adapter)
+    participant ErdViewport
+
+    User->>FileDrop: drop DM v9 XML
+    FileDrop->>erdSlice: dispatch(loadFile)
+    erdSlice->>parser: parseFile
+    parser-->>erdSlice: doc + variant
+    erdSlice->>modelSvc: collectFullModel(doc)
+    modelSvc-->>erdSlice: entities + domains
+    erdSlice->>rel: collectRelationships(doc)
+    rel-->>erdSlice: relationship list (parent and child GUIDs)
+    erdSlice->>layout: computeLayout(entities, relationships)
+    layout-->>erdSlice: nodes (positions) + edges (routes)
+    erdSlice-->>useErd: ErdData
+
+    User->>ErdViewport: pan, zoom, hover an entity
+    ErdViewport->>useErd: highlighted edge ids
+    useErd-->>ErdViewport: re-render with edge highlights
+```
+
 ### Why a ref store?
 
 Three classes of artifact can't safely live in Redux state:
