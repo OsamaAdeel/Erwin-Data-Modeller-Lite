@@ -32,6 +32,19 @@
   flex-wrap: wrap;
 }
 
+.artwork {
+  flex-shrink: 0;
+  color: $primary;
+  opacity: 0.85;
+}
+
+.emptyText {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
 // Active state ------------------------------------------------------------
 
 .headerRow {
