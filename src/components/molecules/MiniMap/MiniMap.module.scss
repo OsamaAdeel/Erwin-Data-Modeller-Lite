@@ -1,0 +1,42 @@
+.wrap {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  box-shadow: $shadow-md;
+  overflow: hidden;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.svg {
+  display: block;
+  cursor: pointer;
+}
+
+// Pale wash so the panel reads as "a window onto the canvas" rather than
+// a foreground UI element.
+.bg {
+  fill: $surface-alt;
+}
+
+// Entity silhouettes — muted so they don't fight the viewport rectangle.
+.entity {
+  fill: var(--color-text-muted);
+  fill-opacity: 0.4;
+  stroke: var(--color-text-muted);
+  stroke-opacity: 0.25;
+  stroke-width: 0.5;
+}
+
+// The visible-area rectangle sits on top of the entities. Filled with a
+// faint primary tint + 1.5px primary border so it's unmissable.
+.viewport {
+  fill: rgba(var(--color-primary-rgb), 0.10);
+  stroke: $primary;
+  stroke-width: 1.5;
+  cursor: grab;
+  transition: fill-opacity 80ms ease;
+
+  &:hover { fill: rgba(var(--color-primary-rgb), 0.16); }
+  &:active { cursor: grabbing; }
+}

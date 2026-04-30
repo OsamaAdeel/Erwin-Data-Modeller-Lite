@@ -18,10 +18,19 @@
   &:active { cursor: grabbing; }
 }
 
-.controls {
+// Minimap takes the top-right corner with a $space-3 inset (per spec).
+// The controls cluster moves to the top-left to avoid overlap.
+.minimap {
   position: absolute;
   top: $space-3;
   right: $space-3;
+  z-index: 2;
+}
+
+.controls {
+  position: absolute;
+  top: $space-3;
+  left: $space-3;
   display: flex;
   align-items: center;
   gap: $space-1;
@@ -30,6 +39,7 @@
   border-radius: $radius-sm;
   padding: 4px;
   box-shadow: $shadow-sm;
+  z-index: 2;
 
   button {
     width: 28px;
@@ -42,11 +52,21 @@
     cursor: pointer;
     transition: background-color 120ms ease, color 120ms ease;
 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
     &:hover {
       background: $primary-soft;
       color: $primary;
     }
   }
+}
+
+// Active state for the minimap toggle so the user can see it's currently on.
+.toggleOn {
+  background: $primary-soft !important;
+  color: $primary !important;
 }
 
 .zoomLabel {
