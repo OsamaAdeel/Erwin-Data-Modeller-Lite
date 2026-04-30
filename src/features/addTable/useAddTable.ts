@@ -6,6 +6,7 @@ import {
   addColumn as addColumnAction,
   cancelEdit as cancelEditAction,
   clearFolder as clearFolderAction,
+  clearValidationResult as clearValidationResultAction,
   commitTable as commitTableAction,
   deleteStagedTable as deleteStagedTableAction,
   editStagedTable as editStagedTableAction,
@@ -22,6 +23,7 @@ import {
   setTableName as setTableNameAction,
   unfinalize as unfinalizeAction,
   updateColumn as updateColumnAction,
+  validateModel as validateModelThunk,
 } from "./addTableSlice";
 export type {
   FolderFileMeta,
@@ -42,6 +44,8 @@ export function useAddTable() {
   const editingId = useAppSelector((s) => s.addTable.editingId);
   const isFinalized = useAppSelector((s) => s.addTable.isFinalized);
   const success = useAppSelector((s) => s.addTable.success);
+  const validationResult = useAppSelector((s) => s.addTable.validationResult);
+  const validating = useAppSelector((s) => s.addTable.validating);
   const folder = useAppSelector((s) => s.addTable.folder);
 
   const validation: ValidationResult = useMemo(
@@ -149,6 +153,14 @@ export function useAddTable() {
     void dispatch(generateThunk());
   }, [dispatch]);
 
+  const validateModel = useCallback(() => {
+    void dispatch(validateModelThunk());
+  }, [dispatch]);
+
+  const clearValidationResult = useCallback(() => {
+    dispatch(clearValidationResultAction());
+  }, [dispatch]);
+
   const resetForm = useCallback(() => {
     dispatch(resetFormAction());
   }, [dispatch]);
@@ -188,6 +200,8 @@ export function useAddTable() {
     totalStagedColumns,
     success,
     validation,
+    validationResult,
+    validating,
     canFinalize,
     canGenerate,
     folder,
@@ -206,6 +220,8 @@ export function useAddTable() {
     finalize,
     unfinalize,
     generate,
+    validateModel,
+    clearValidationResult,
     resetForm,
     pickFolder,
     refreshFolder,

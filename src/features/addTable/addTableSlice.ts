@@ -7,6 +7,7 @@ import {
   addEntityDMv9,
 } from "@/services/xml/emitter";
 import { generateNextFileName, serializeDoc } from "@/services/xml/serialize";
+import { validateOfsaaXml, type OfsaaValidationResult } from "@/services/xml/validator";
 import { downloadBlob } from "@/utils/download";
 import type { NewColumnSpec, Variant } from "@/services/xml/types";
 import {
@@ -85,6 +86,11 @@ export interface AddTableState {
   // Finalization gate — Generate XML is only possible when true.
   isFinalized: boolean;
   success?: SuccessInfo;
+  // OFSAA validator dry-run result (Step 5 "Validate model" button).
+  // null = no run yet; populated after a successful validateModel
+  // dispatch and cleared when the staged set or parsed doc changes.
+  validationResult: OfsaaValidationResult | null;
+  validating: boolean;
   // Preferred-folder state. Lives alongside the rest of Step-1 state so the
   // folder, the auto-selected file, and the parsed doc stay in sync.
   folder: PreferredFolderState;
@@ -122,6 +128,8 @@ const initialState: AddTableState = {
   editingId: null,
   isFinalized: false,
   success: undefined,
+  validationResult: null,
+  validating: false,
   folder: initialFolderState,
 };
 
@@ -276,6 +284,49 @@ export const selectFolderFile = createAsyncThunk<
   return id;
 });
 
+/**
+ * Run the OFSAA validator against a clone of the loaded doc with every
+ * staged table applied. Doesn't touch the live doc — clones via
+ * serialize → re-parse so the XMLDocument the emitter actually
+ * mutates stays untouched (we don't want a Validate click to advance
+ * the in-memory model).
+ *
+ * Returns the structured violation list. Treated like a "preview"
+ * call — surfaced as a panel on Step 5, never triggers a download.
+ */
+export const validateModel = createAsyncThunk<OfsaaValidationResult, void, ThunkConfig>(
+  "addTable/validateModel",
+  async (_, { getState, rejectWithValue }) => {
+    const { parsed, stagedTables } = getState().addTable;
+    if (!parsed) return rejectWithValue("No XML loaded");
+    const liveDoc = getParsedDoc(parsed.parseId);
+    if (!liveDoc) return rejectWithValue("Parsed document is no longer available");
+
+    // Round-trip through XMLSerializer + DOMParser to get a fresh,
+    // mutable copy that mirrors what the live doc would look like
+    // after the staged tables are emitted.
+    const cloneXml = serializeDoc(liveDoc);
+    const cloneDoc = new DOMParser().parseFromString(cloneXml, "application/xml");
+
+    try {
+      for (const t of stagedTables) {
+        const trimmedCols = t.columns.map((c) => ({ ...c, name: c.name.trim() }));
+        const trimmedName = t.table_name.trim();
+        if (parsed.variant === "erwin-dm-v9") {
+          addEntityDMv9(cloneDoc, trimmedName, trimmedCols, parsed.domainMap);
+        } else {
+          addEntityClassic(cloneDoc, trimmedName, trimmedCols);
+        }
+      }
+    } catch (err) {
+      if (err instanceof EmitterError) return rejectWithValue(err.message);
+      throw err;
+    }
+
+    return validateOfsaaXml(serializeDoc(cloneDoc));
+  }
+);
+
 export const generate = createAsyncThunk<SuccessInfo, void, ThunkConfig>(
   "addTable/generate",
   async (_, { getState, rejectWithValue }) => {
@@ -378,6 +429,8 @@ const slice = createSlice({
     // Stage the current form as a new table, or replace the one being edited.
     commitTable(state) {
       if (state.isFinalized) return;
+      // Any staging change invalidates a previous validation pass.
+      state.validationResult = null;
       const snapshot: StagedTable = {
         id: state.editingId ?? crypto.randomUUID(),
         table_name: state.tableName.trim(),
@@ -397,6 +450,7 @@ const slice = createSlice({
       state.success = undefined;
     },
     deleteStagedTable(state, action: PayloadAction<string>) {
+      state.validationResult = null;
       state.stagedTables = state.stagedTables.filter((t) => t.id !== action.payload);
       // Cancel edit if the table being edited was removed.
       if (state.editingId === action.payload) {
@@ -434,6 +488,9 @@ const slice = createSlice({
     },
     clearSuccess(state) {
       state.success = undefined;
+    },
+    clearValidationResult(state) {
+      state.validationResult = null;
     },
     clearFolder(state) {
       state.folder = initialFolderState;
@@ -482,6 +539,18 @@ const slice = createSlice({
         state.isFinalized = false;
       })
       .addCase(generate.rejected, (state, action) => {
+        state.loadError = action.payload ?? action.error.message;
+      })
+      // --- Validate model ----------------------------------------------
+      .addCase(validateModel.pending, (state) => {
+        state.validating = true;
+      })
+      .addCase(validateModel.fulfilled, (state, action) => {
+        state.validating = false;
+        state.validationResult = action.payload;
+      })
+      .addCase(validateModel.rejected, (state, action) => {
+        state.validating = false;
         state.loadError = action.payload ?? action.error.message;
       })
       // --- Preferred folder lifecycle ----------------------------------
@@ -549,6 +618,7 @@ export const {
   finalize,
   unfinalize,
   clearSuccess,
+  clearValidationResult,
   clearFolder,
 } = slice.actions;
 

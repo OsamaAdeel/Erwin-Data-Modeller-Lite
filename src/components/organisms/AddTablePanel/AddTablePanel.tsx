@@ -13,6 +13,7 @@ import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
 import type { StagedTable } from "@/features/addTable/useAddTable";
 import { generateNextFileName } from "@/services/xml/serialize";
+import type { OfsaaValidationResult, Violation } from "@/services/xml/validator";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
 
@@ -54,6 +55,9 @@ export default function AddTablePanel() {
     finalize,
     unfinalize,
     generate,
+    validateModel,
+    validationResult,
+    validating,
     folder,
     pickFolder,
     refreshFolder,
@@ -345,6 +349,14 @@ export default function AddTablePanel() {
               </Button>
             )}
             <Button
+              variant="outline"
+              onClick={validateModel}
+              disabled={validating || stagedTables.length === 0}
+              title="Run the OFSAA validator against the model with the staged tables applied — no download"
+            >
+              {validating ? "Validating…" : "Validate model"}
+            </Button>
+            <Button
               size="lg"
               onClick={generate}
               disabled={!canGenerate}
@@ -354,6 +366,10 @@ export default function AddTablePanel() {
               {t.sections.finalize.generateBtn}
             </Button>
           </div>
+
+          {validationResult && (
+            <ValidationPanel result={validationResult} />
+          )}
 
           {canGenerate && nextFileName && (
             <div className={styles.nextFilePreview}>
@@ -447,6 +463,63 @@ function DownloadIcon() {
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
+  );
+}
+
+// Inline panel summarising the OFSAA validator's last run. Renders as a
+// banner ("Looks good — N rules checked") on success or a grouped
+// violations list inside a <details> on failure.
+function ValidationPanel({ result }: { result: OfsaaValidationResult }) {
+  const grouped = useMemo(() => {
+    const out = new Map<string, Violation[]>();
+    for (const v of result.violations) {
+      const key = v.rule;
+      const list = out.get(key);
+      if (list) list.push(v);
+      else out.set(key, [v]);
+    }
+    return Array.from(out.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [result]);
+
+  if (result.ok) {
+    return (
+      <div className={styles.validationOk} role="status">
+        <Badge tone="success">✓</Badge>
+        <span>OFSAA validator: 0 violations — model is ready to generate.</span>
+      </div>
+    );
+  }
+
+  return (
+    <details className={styles.validationFail} open>
+      <summary>
+        <Badge tone="danger">!</Badge>
+        <span>
+          OFSAA validator: {result.violations.length} violation{result.violations.length === 1 ? "" : "s"}
+        </span>
+      </summary>
+      <div className={styles.validationBody}>
+        {grouped.map(([rule, items]) => (
+          <section key={rule} className={styles.validationGroup}>
+            <h4 className={styles.validationRule}>
+              {rule} <span className={styles.validationCount}>· {items.length}</span>
+            </h4>
+            <ul className={styles.validationList}>
+              {items.map((v, i) => (
+                <li key={i} className={styles.validationItem}>
+                  {(v.entity || v.column || v.field) && (
+                    <span className={styles.validationContext}>
+                      {[v.entity, v.column, v.field].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                  <span>{v.message}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </details>
   );
 }
 
