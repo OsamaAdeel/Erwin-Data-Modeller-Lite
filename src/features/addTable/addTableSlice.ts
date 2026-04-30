@@ -335,6 +335,25 @@ const slice = createSlice({
         state.columns = state.columns.filter((c) => c.id !== action.payload);
       }
     },
+    /**
+     * Re-position a column relative to another by id.
+     * `before` determines whether the moved row lands before or after
+     * the target row (set from the cursor's vertical half over the
+     * drop target in ColumnRow).
+     */
+    reorderColumns(
+      state,
+      action: PayloadAction<{ fromId: string; toId: string; before: boolean }>
+    ) {
+      const { fromId, toId, before } = action.payload;
+      if (fromId === toId) return;
+      const fromIdx = state.columns.findIndex((c) => c.id === fromId);
+      const toIdx = state.columns.findIndex((c) => c.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = state.columns.splice(fromIdx, 1);
+      const newToIdx = state.columns.findIndex((c) => c.id === toId);
+      state.columns.splice(before ? newToIdx : newToIdx + 1, 0, moved);
+    },
     updateColumn(
       state,
       action: PayloadAction<{ id: string; patch: Partial<NewColumnSpec> }>
@@ -520,6 +539,7 @@ export const {
   setDescription,
   addColumn,
   removeColumn,
+  reorderColumns,
   updateColumn,
   resetForm,
   commitTable,

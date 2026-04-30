@@ -1,14 +1,67 @@
 .row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.4fr 56px 56px 32px;
+  grid-template-columns: 24px 2fr 1fr 1.4fr 56px 56px 32px;
   gap: $space-2;
   align-items: center;
+  position: relative;
+
+  // Drop-indicator borders rendered on the row being hovered during
+  // a drag. The column-spanning ::before / ::after pseudo-elements
+  // sit at the row's edges so the indicator looks like a thick line
+  // between rows without altering layout heights.
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: $primary;
+    border-radius: 1px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 80ms ease;
+  }
+  &::before { top: -3px; }
+  &::after { bottom: -3px; }
 
   @include mobile {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 24px 1fr 1fr;
     grid-auto-rows: auto;
   }
 }
+
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 32px;
+  border-radius: $radius-sm;
+  color: $text-dim;
+  background: transparent;
+  cursor: grab;
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: $surface-alt;
+    color: $text-muted;
+  }
+
+  &:active:not(:disabled) {
+    cursor: grabbing;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+}
+
+.dragging { opacity: 0.4; }
+
+.dropAbove::before { opacity: 1; }
+.dropBelow::after  { opacity: 1; }
 
 .select {
   padding: 9px 10px;
