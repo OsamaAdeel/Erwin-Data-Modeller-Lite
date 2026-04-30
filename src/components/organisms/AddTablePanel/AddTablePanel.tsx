@@ -111,7 +111,7 @@ export default function AddTablePanel() {
         {parsed && !showUploaders ? (
           <div className={styles.loadedSummary}>
             <div className={styles.loadedSummaryBody}>
-              <span className={styles.loadedIcon} aria-hidden>📄</span>
+              <FileGlyph className={styles.loadedIcon} />
               <div className={styles.loadedSummaryText}>
                 <div className={styles.loadedSummaryName} title={parsed.fileName}>
                   {parsed.fileName}
@@ -386,19 +386,30 @@ function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
   // The parent remounts this component (via key=filename) on each new
   // generate, so this initializer runs exactly when we want it to.
   const [generatedAt] = useState(() => new Date());
+  const [dismissed, setDismissed] = useState(false);
   const timeLabel = generatedAt.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
+  if (dismissed) return null;
   return (
     <div className={styles.success} role="status" aria-live="polite">
       <Badge tone="success">✓</Badge>
-      <span>
+      <span className={styles.successText}>
         Generated{" "}
         <code className={styles.mono}>{filename}</code>
         {" — "}
         {tablesAdded} table{tablesAdded === 1 ? "" : "s"} added at {timeLabel}
       </span>
+      <button
+        type="button"
+        className={styles.successDismiss}
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss"
+        title="Dismiss"
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -419,6 +430,26 @@ function DownloadIcon() {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+function FileGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
     </svg>
   );
 }

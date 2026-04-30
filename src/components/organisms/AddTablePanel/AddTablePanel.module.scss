@@ -25,7 +25,7 @@
   min-width: 0;
 }
 
-.loadedIcon { font-size: 22px; }
+.loadedIcon { color: $primary; flex-shrink: 0; }
 
 .loadedSummaryText {
   display: flex;
@@ -371,6 +371,26 @@
   border-radius: $radius-sm;
   color: $green;
   margin-top: $space-3;
+}
+
+.successText { flex: 1; min-width: 0; }
+
+.successDismiss {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  color: $green;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+
+  &:hover { opacity: 1; background: rgba(var(--color-green-rgb), 0.15); }
 }
 
 .mono {

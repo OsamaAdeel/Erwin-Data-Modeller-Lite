@@ -3,10 +3,12 @@ import pkg from "../../../package.json";
 import styles from "./Footer.module.scss";
 
 export default function Footer() {
+  // Computed at render time so the footer never goes stale.
+  const year = new Date().getFullYear();
   return (
     <footer className={styles.footer}>
       <div className={styles.left}>
-        <span>{COMMON.footer.copyright}</span>
+        <span>© {year} Erwin Data Modeller Lite</span>
         <span className={styles.dot} aria-hidden>·</span>
         <span>{COMMON.footer.openSource}</span>
         <span className={styles.dot} aria-hidden>·</span>

@@ -58,7 +58,7 @@ export default function FolderPicker({
         <div className={styles.headerLeft}>
           <div className={styles.label}>Preferred folder</div>
           <div className={styles.folderName} title={name}>
-            <span className={styles.folderIcon} aria-hidden>📁</span>
+            <FolderGlyph className={styles.folderIcon} />
             {name}
           </div>
         </div>
@@ -154,6 +154,26 @@ function FilePicker({ files, selectedId, onSelect, disabled }: FilePickerProps) 
         aria-label="Override the auto-selected file"
       />
     </label>
+  );
+}
+
+// Small Lucide-style folder glyph used inline next to the folder name.
+function FolderGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
   );
 }
 
