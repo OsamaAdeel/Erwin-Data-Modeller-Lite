@@ -13,8 +13,14 @@ export interface AppShellProps {
 export default function AppShell({ children, onHelp }: AppShellProps) {
   return (
     <>
+      {/* Visually-hidden link revealed on focus so keyboard users can
+          jump past the TopBar straight to the content. Standard a11y
+          pattern (WCAG 2.4.1). */}
+      <a href="#root-content" className={styles.skipLink}>
+        Skip to main content
+      </a>
       <TopBar onHelp={onHelp} />
-      <main className={styles.main}>
+      <main id="root-content" className={styles.main}>
         <div className={styles.wrap}>{children}</div>
       </main>
       <Footer />

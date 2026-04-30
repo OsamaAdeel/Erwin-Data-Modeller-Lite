@@ -21,14 +21,14 @@
   gap: $space-2;
 }
 
-// Shared 36×36 icon button for the actions slot. Mirrors ThemeToggle's
-// look so the help and theme buttons read as a pair.
+// Shared 40×40 icon button for the actions slot — meets WCAG 2.5.5
+// AAA target-size guidance with a hair to spare. Mirrors ThemeToggle.
 .iconButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: $radius-sm;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.9);

@@ -206,10 +206,12 @@
 }
 
 // Generate XML button gets a subtle "ready to fire" pulse the first
-// time it becomes enabled. The animation runs three times (~1.5s) and
-// stops; further interactions don't re-trigger it.
+// time it becomes enabled. Pulse only runs when the user hasn't asked
+// for reduced motion (prefers-reduced-motion: reduce).
 .generateReady {
-  animation: generate-ready-pulse 600ms ease-out 3;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: generate-ready-pulse 600ms ease-out 3;
+  }
 }
 
 @keyframes generate-ready-pulse {
@@ -325,7 +327,9 @@
 }
 
 .finalizeBadgeFlash {
-  animation: finalize-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: finalize-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+  }
 }
 
 @keyframes finalize-pop {
