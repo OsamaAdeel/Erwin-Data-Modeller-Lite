@@ -4,6 +4,51 @@
   gap: $space-5;
 }
 
+// Collapsed Step-1 summary row: shown once a file is loaded, replaces
+// the dropzone+picker block until the user clicks "Change file".
+.loadedSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  background: $green-soft;
+  border: 1px solid rgba(var(--color-green-rgb), 0.3);
+  border-left: 4px solid $green;
+  border-radius: $radius-sm;
+}
+
+.loadedSummaryBody {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  min-width: 0;
+}
+
+.loadedIcon { font-size: 22px; }
+
+.loadedSummaryText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.loadedSummaryName {
+  font-family: $font-mono;
+  font-weight: 600;
+  font-size: $fs-md;
+  color: $text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loadedSummaryMeta {
+  font-size: $fs-sm;
+  color: $text-muted;
+}
+
 .uploadSeparator {
   display: flex;
   align-items: center;

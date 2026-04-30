@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ADD_TABLE, COMMON } from "@/CONSTANTS";
 import Button from "@/components/atoms/Button";
 import Card from "@/components/atoms/Card";
@@ -18,6 +18,10 @@ import styles from "./AddTablePanel.module.scss";
 export default function AddTablePanel() {
   const t = ADD_TABLE;
   const [search, setSearch] = useState("");
+  // Step 1 collapses to a summary row once a file has been loaded so the
+  // dropzone + folder picker don't dominate the page on subsequent edits.
+  // The "Change" button below the summary expands it back.
+  const [showUploaders, setShowUploaders] = useState(true);
   const {
     parsed,
     loadError,
@@ -53,6 +57,12 @@ export default function AddTablePanel() {
     clearFolder,
   } = useAddTable();
 
+  // Auto-collapse Step 1 the first time a file lands. Re-fires on every
+  // new parseId so loading a different file collapses again.
+  useEffect(() => {
+    if (parsed?.parseId) setShowUploaders(false);
+  }, [parsed?.parseId]);
+
   const filteredEntities = useMemo(() => {
     if (!parsed) return [];
     const list = Array.from(parsed.entityDict.values()).sort((a, b) => a.localeCompare(b));
@@ -85,23 +95,44 @@ export default function AddTablePanel() {
   return (
     <div className={styles.wrap}>
       <Card step={1} title={t.sections.upload.heading}>
-        <FolderPicker
-          state={folder}
-          onPick={pickFolder}
-          onRefresh={refreshFolder}
-          onSelectFile={selectFolderFile}
-          onClear={clearFolder}
-        />
-        <div className={styles.uploadSeparator} aria-hidden>or upload a single file</div>
-        <FileDrop
-          hint={t.sections.upload.dropHint}
-          subhint={t.sections.upload.dropSubhint}
-          loadedName={parsed ? `${t.sections.upload.loadedPrefix} ${parsed.fileName}` : undefined}
-          loadedMeta={parsed ? `${parsed.entityDict.size} entities · ${parsed.variant}` : undefined}
-          error={loadError}
-          loading={loading}
-          onFile={(f) => void loadFile(f)}
-        />
+        {parsed && !showUploaders ? (
+          <div className={styles.loadedSummary}>
+            <div className={styles.loadedSummaryBody}>
+              <span className={styles.loadedIcon} aria-hidden>📄</span>
+              <div className={styles.loadedSummaryText}>
+                <div className={styles.loadedSummaryName} title={parsed.fileName}>
+                  {parsed.fileName}
+                </div>
+                <div className={styles.loadedSummaryMeta}>
+                  {parsed.entityDict.size} entities · {parsed.variant}
+                </div>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setShowUploaders(true)}>
+              Change file
+            </Button>
+          </div>
+        ) : (
+          <>
+            <FolderPicker
+              state={folder}
+              onPick={pickFolder}
+              onRefresh={refreshFolder}
+              onSelectFile={selectFolderFile}
+              onClear={clearFolder}
+            />
+            <div className={styles.uploadSeparator} aria-hidden>or upload a single file</div>
+            <FileDrop
+              hint={t.sections.upload.dropHint}
+              subhint={t.sections.upload.dropSubhint}
+              loadedName={parsed ? `${t.sections.upload.loadedPrefix} ${parsed.fileName}` : undefined}
+              loadedMeta={parsed ? `${parsed.entityDict.size} entities · ${parsed.variant}` : undefined}
+              error={loadError}
+              loading={loading}
+              onFile={(f) => void loadFile(f)}
+            />
+          </>
+        )}
       </Card>
 
       {parsed && (
