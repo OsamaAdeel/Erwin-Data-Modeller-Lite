@@ -77,6 +77,7 @@ export default function ErdPanel() {
             <ErdViewport
               contentWidth={erd.data.layout.width}
               contentHeight={erd.data.layout.height}
+              minimapEntities={Array.from(erd.data.layout.nodes.values())}
             >
               {/* draw edges first so they sit behind entity cards */}
               {erd.data.layout.edges.map((e) => (
