@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { COMMON, ERD } from "@/CONSTANTS";
 import Button from "@/components/atoms/Button";
 import Card from "@/components/atoms/Card";
+import Input from "@/components/atoms/Input";
 import FileDrop from "@/components/molecules/FileDrop";
 import StatTile from "@/components/molecules/StatTile";
 import EmptyState from "@/components/molecules/EmptyState";
@@ -15,12 +16,41 @@ export default function ErdPanel() {
   const t = ERD.sections;
   const erd = useErd();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Build the matched-id set on every render — O(N) over entities. Empty
+  // search short-circuits to an empty set so dim/match logic is a no-op.
+  const matchedIds = useMemo<Set<string>>(() => {
+    const q = search.trim().toLowerCase();
+    if (!q || !erd.data) return new Set();
+    const out = new Set<string>();
+    for (const ent of erd.data.model.entities) {
+      if (ent.name.toLowerCase().includes(q)) out.add(ent.id);
+    }
+    return out;
+  }, [search, erd.data]);
+
+  const totalEntities = erd.data?.model.entities.length ?? 0;
+  const isSearching = search.trim().length > 0;
 
   const highlightedEdgeIds = new Set<string>();
   if (hovered && erd.data) {
     for (const e of erd.data.layout.edges) {
       if (e.sourceId === hovered || e.targetId === hovered) highlightedEdgeIds.add(e.id);
     }
+  }
+
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Escape" && search) {
+      e.preventDefault();
+      setSearch("");
+    }
+  }
+
+  function clearSearch() {
+    setSearch("");
+    searchInputRef.current?.focus();
   }
 
   return (
@@ -68,6 +98,44 @@ export default function ErdPanel() {
             />
           </div>
 
+          {erd.stats.entities > 0 && (
+            <div className={styles.searchRow}>
+              <div className={styles.searchInputWrap}>
+                <Input
+                  ref={searchInputRef}
+                  type="search"
+                  placeholder="Search entities…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  spellCheck={false}
+                  autoComplete="off"
+                  aria-label="Search entities"
+                />
+                {isSearching && (
+                  <button
+                    type="button"
+                    className={styles.searchClear}
+                    onClick={clearSearch}
+                    aria-label="Clear search"
+                    title="Clear search (Esc)"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              {isSearching && (
+                <span
+                  className={styles.searchCounter}
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {matchedIds.size} of {totalEntities}
+                </span>
+              )}
+            </div>
+          )}
+
           {erd.stats.entities === 0 ? (
             <EmptyState
               title={t.view.noEntitiesTitle}
@@ -80,18 +148,35 @@ export default function ErdPanel() {
               minimapEntities={Array.from(erd.data.layout.nodes.values())}
             >
               {/* draw edges first so they sit behind entity cards */}
-              {erd.data.layout.edges.map((e) => (
-                <ErdEdge key={e.id} edge={e} highlighted={highlightedEdgeIds.has(e.id)} />
-              ))}
+              {erd.data.layout.edges.map((e) => {
+                // An edge is dimmed only when BOTH endpoints are non-matches.
+                // Edges touching a match stay full-opacity to preserve context.
+                const edgeDimmed =
+                  isSearching &&
+                  !matchedIds.has(e.sourceId) &&
+                  !matchedIds.has(e.targetId);
+                return (
+                  <ErdEdge
+                    key={e.id}
+                    edge={e}
+                    highlighted={highlightedEdgeIds.has(e.id)}
+                    isDimmed={edgeDimmed}
+                  />
+                );
+              })}
               {erd.data.model.entities.map((ent) => {
                 const pos = erd.data!.layout.nodes.get(ent.id);
                 if (!pos) return null;
+                const isMatched = isSearching && matchedIds.has(ent.id);
+                const isDimmed = isSearching && !matchedIds.has(ent.id);
                 return (
                   <ErdEntity
                     key={ent.id}
                     entity={ent}
                     position={pos}
                     highlighted={hovered === ent.id}
+                    isMatched={isMatched}
+                    isDimmed={isDimmed}
                     onMouseEnter={() => setHovered(ent.id)}
                     onMouseLeave={() => setHovered(null)}
                   />
