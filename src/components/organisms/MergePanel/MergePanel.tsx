@@ -57,6 +57,9 @@ export default function MergePanel() {
     <div className={styles.wrap}>
       {/* ---------- Step 1: Load ---------- */}
       <Card step={1} title={t.load.heading}>
+        {!m.source && !m.target && (
+          <p className={styles.explainer}>{t.load.explainer}</p>
+        )}
         <div className={styles.dropGrid}>
           <SlotDrop
             role="source"
@@ -102,12 +105,21 @@ export default function MergePanel() {
           {!noop && (
             <>
               <div className={styles.tileGrid}>
-                <StatTile label={t.plan.tilesMissingTables} value={m.plan.tablesMissing.length} />
-                <StatTile label={t.plan.tilesMissingCols} value={m.plan.columnsMissing.length} />
+                <StatTile
+                  label={t.plan.tilesMissingTables}
+                  value={m.plan.tablesMissing.length}
+                  hint="Tables that exist in SOURCE but are missing from TARGET. Move them to the staged pane to add them."
+                />
+                <StatTile
+                  label={t.plan.tilesMissingCols}
+                  value={m.plan.columnsMissing.length}
+                  hint="Columns that exist in a SOURCE table that's already in TARGET, but are missing from TARGET's copy. Adding them is non-destructive."
+                />
                 <StatTile
                   label={t.plan.tilesConflicts}
                   value={m.plan.conflicts.length}
                   tone="warning"
+                  hint="Cases where SOURCE and TARGET both have a column but disagree on type, nullability, or domain. We never overwrite — see the Conflicts section to review."
                 />
               </div>
 

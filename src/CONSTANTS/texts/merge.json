@@ -4,6 +4,7 @@
   "sections": {
     "load": {
       "heading": "1. Load source and target",
+      "explainer": "Drop two erwin DM 9.x XML files. The SOURCE is the model you're pulling new tables and columns FROM; the TARGET is the model you're merging INTO. Nothing in TARGET is removed — this is a one-way add.",
       "sourceRole": "SOURCE",
       "sourceSub": "Model to pull tables & columns FROM",
       "targetRole": "TARGET",

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ADD_TABLE, COMMON } from "@/CONSTANTS";
 import Button from "@/components/atoms/Button";
 import Card from "@/components/atoms/Card";
@@ -18,6 +18,10 @@ import styles from "./AddTablePanel.module.scss";
 export default function AddTablePanel() {
   const t = ADD_TABLE;
   const [search, setSearch] = useState("");
+  // Step 1 collapses to a summary row once a file has been loaded so the
+  // dropzone + folder picker don't dominate the page on subsequent edits.
+  // The "Change" button below the summary expands it back.
+  const [showUploaders, setShowUploaders] = useState(true);
   const {
     parsed,
     loadError,
@@ -53,6 +57,12 @@ export default function AddTablePanel() {
     clearFolder,
   } = useAddTable();
 
+  // Auto-collapse Step 1 the first time a file lands. Re-fires on every
+  // new parseId so loading a different file collapses again.
+  useEffect(() => {
+    if (parsed?.parseId) setShowUploaders(false);
+  }, [parsed?.parseId]);
+
   const filteredEntities = useMemo(() => {
     if (!parsed) return [];
     const list = Array.from(parsed.entityDict.values()).sort((a, b) => a.localeCompare(b));
@@ -85,33 +95,63 @@ export default function AddTablePanel() {
   return (
     <div className={styles.wrap}>
       <Card step={1} title={t.sections.upload.heading}>
-        <FolderPicker
-          state={folder}
-          onPick={pickFolder}
-          onRefresh={refreshFolder}
-          onSelectFile={selectFolderFile}
-          onClear={clearFolder}
-        />
-        <div className={styles.uploadSeparator} aria-hidden>or upload a single file</div>
-        <FileDrop
-          hint={t.sections.upload.dropHint}
-          subhint={t.sections.upload.dropSubhint}
-          loadedName={parsed ? `${t.sections.upload.loadedPrefix} ${parsed.fileName}` : undefined}
-          loadedMeta={parsed ? `${parsed.entityDict.size} entities · ${parsed.variant}` : undefined}
-          error={loadError}
-          loading={loading}
-          onFile={(f) => void loadFile(f)}
-        />
+        {parsed && !showUploaders ? (
+          <div className={styles.loadedSummary}>
+            <div className={styles.loadedSummaryBody}>
+              <span className={styles.loadedIcon} aria-hidden>📄</span>
+              <div className={styles.loadedSummaryText}>
+                <div className={styles.loadedSummaryName} title={parsed.fileName}>
+                  {parsed.fileName}
+                </div>
+                <div className={styles.loadedSummaryMeta}>
+                  {parsed.entityDict.size} entities · {parsed.variant}
+                </div>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setShowUploaders(true)}>
+              Change file
+            </Button>
+          </div>
+        ) : (
+          <>
+            <FolderPicker
+              state={folder}
+              onPick={pickFolder}
+              onRefresh={refreshFolder}
+              onSelectFile={selectFolderFile}
+              onClear={clearFolder}
+            />
+            <div className={styles.uploadSeparator} aria-hidden>or upload a single file</div>
+            <FileDrop
+              hint={t.sections.upload.dropHint}
+              subhint={t.sections.upload.dropSubhint}
+              loadedName={parsed ? `${t.sections.upload.loadedPrefix} ${parsed.fileName}` : undefined}
+              loadedMeta={parsed ? `${parsed.entityDict.size} entities · ${parsed.variant}` : undefined}
+              error={loadError}
+              loading={loading}
+              onFile={(f) => void loadFile(f)}
+            />
+          </>
+        )}
       </Card>
 
       {parsed && (
         <Card step={2} title={t.sections.info.heading}>
           <div className={styles.tileGrid}>
-            <StatTile label={t.sections.info.entitiesLabel} value={parsed.entityDict.size} />
-            <StatTile label={t.sections.info.domainsLabel} value={parsed.domainMap.size} />
+            <StatTile
+              label={t.sections.info.entitiesLabel}
+              value={parsed.entityDict.size}
+              hint="An entity is one logical table in the model — for example CUSTOMER or ORDER."
+            />
+            <StatTile
+              label={t.sections.info.domainsLabel}
+              value={parsed.domainMap.size}
+              hint="A domain is a reusable column type definition (e.g. an AMOUNT domain shared across all amount columns) defined once in the model and referenced by attributes."
+            />
             <StatTile
               label={t.sections.info.variantLabel}
               value={<span className={styles.variantValue}>{parsed.variant}</span>}
+              hint="erwin-dm-v9 = the modern erwin Data Modeler 9.x XML schema (uses the EMX namespace). erwin-classic = the older flat XML format. Merge and ERD require dm-v9."
             />
           </div>
 
@@ -274,7 +314,13 @@ export default function AddTablePanel() {
                 {t.sections.finalize.unfinalizeBtn}
               </Button>
             )}
-            <Button onClick={generate} disabled={!canGenerate}>
+            <Button
+              size="lg"
+              onClick={generate}
+              disabled={!canGenerate}
+              className={canGenerate ? styles.generateReady : ""}
+            >
+              <DownloadIcon />
               {t.sections.finalize.generateBtn}
             </Button>
           </div>
@@ -294,19 +340,63 @@ export default function AddTablePanel() {
           )}
 
           {success && (
-            <div className={styles.success}>
-              <Badge tone="success">✓</Badge>
-              <span>
-                {t.messages.addSuccess}{" "}
-                <code className={styles.mono}>{success.filename}</code>
-                {" · "}
-                {success.tablesAdded} table(s) added
-              </span>
-            </div>
+            <GeneratedToast
+              key={success.filename}
+              filename={success.filename}
+              tablesAdded={success.tablesAdded}
+            />
           )}
         </Card>
       )}
     </div>
+  );
+}
+
+interface GeneratedToastProps {
+  filename: string;
+  tablesAdded: number;
+}
+
+function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
+  // Capture the wall-clock time the user actually clicked Generate so the
+  // toast says "generated at 4:42 PM" rather than recomputing on rerender.
+  // The parent remounts this component (via key=filename) on each new
+  // generate, so this initializer runs exactly when we want it to.
+  const [generatedAt] = useState(() => new Date());
+  const timeLabel = generatedAt.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return (
+    <div className={styles.success} role="status" aria-live="polite">
+      <Badge tone="success">✓</Badge>
+      <span>
+        Generated{" "}
+        <code className={styles.mono}>{filename}</code>
+        {" — "}
+        {tablesAdded} table{tablesAdded === 1 ? "" : "s"} added at {timeLabel}
+      </span>
+    </div>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
   );
 }
 
