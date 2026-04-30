@@ -127,6 +127,7 @@
   border-radius: 0 0 $radius $radius;
   display: flex;
   gap: $space-2;
+  flex-wrap: wrap;
 }
 
 .empty {

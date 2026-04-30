@@ -53,8 +53,12 @@ export function useMerge() {
   );
 
   const moveAll = useCallback(
-    (from: "pending" | "staged", to: "pending" | "staged") => {
-      dispatch(moveAllAction({ from, to }));
+    (
+      from: "pending" | "staged",
+      to: "pending" | "staged",
+      kind?: "table" | "column"
+    ) => {
+      dispatch(moveAllAction({ from, to, kind }));
     },
     [dispatch]
   );

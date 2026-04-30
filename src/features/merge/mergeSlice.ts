@@ -136,10 +136,18 @@ const slice = createSlice({
       action: PayloadAction<{
         from: "pending" | "staged";
         to: "pending" | "staged";
+        // When set, only rows whose kind matches are moved. Lets the UI
+        // expose "Move all tables" + "Move all columns" without two
+        // separate reducer paths.
+        kind?: "table" | "column";
       }>
     ) {
-      const { from, to } = action.payload;
-      for (const r of state.rows) if (r.side === from) r.side = to;
+      const { from, to, kind } = action.payload;
+      for (const r of state.rows) {
+        if (r.side !== from) continue;
+        if (kind && r.kind !== kind) continue;
+        r.side = to;
+      }
     },
     execute(state) {
       const { source, target, plan, rows } = state;
