@@ -49,6 +49,25 @@
   color: $text-muted;
 }
 
+// "Don't have a model handy? Try with a sample model" — onboarding aid
+// shown only on first paint when nothing has been loaded yet.
+.sampleHint {
+  margin: $space-3 0 0;
+  text-align: center;
+  font-size: $fs-sm;
+  color: $text-muted;
+}
+
+.sampleLink {
+  background: transparent;
+  color: $primary;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:hover { color: $primary-dark; }
+}
+
 .uploadSeparator {
   display: flex;
   align-items: center;

@@ -13,6 +13,7 @@ import {
   finalize as finalizeAction,
   generate as generateThunk,
   loadFile as loadFileThunk,
+  loadSample as loadSampleThunk,
   pickFolder as pickFolderThunk,
   refreshFolder as refreshFolderThunk,
   removeColumn as removeColumnAction,
@@ -72,6 +73,10 @@ export function useAddTable() {
     },
     [dispatch]
   );
+
+  const loadSample = useCallback(() => {
+    void dispatch(loadSampleThunk());
+  }, [dispatch]);
 
   const setTableName = useCallback(
     (name: string) => {
@@ -206,6 +211,7 @@ export function useAddTable() {
     canGenerate,
     folder,
     loadFile,
+    loadSample,
     setTableName,
     setDescription,
     addColumn,

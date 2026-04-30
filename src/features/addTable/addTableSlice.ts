@@ -285,6 +285,82 @@ export const selectFolderFile = createAsyncThunk<
 });
 
 /**
+ * Onboarding shortcut: fetches the bundled empty starter from /public,
+ * seeds it with three demo entities (CUSTOMERS, SALES_ORDERS, PRODUCTS),
+ * then dispatches loadFile so the rest of the app sees a normal "user
+ * just loaded a file" event. Avoids hand-crafting a populated sample
+ * XML by reusing the OFSAA-compliant emitter we already trust.
+ */
+export const loadSample = createAsyncThunk<void, void, ThunkConfig>(
+  "addTable/loadSample",
+  async (_, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await fetch("/sample-erwin.xml");
+      if (!res.ok) throw new Error(`Could not load sample model (${res.status})`);
+      const text = await res.text();
+
+      const tmpDoc = new DOMParser().parseFromString(text, "application/xml");
+      // Pull domains so the emitter's pickDomain has something to land on.
+      const tmpDomainMap = new Map<string, string>();
+      const domains = tmpDoc.getElementsByTagName("Domain");
+      for (const d of Array.from(domains)) {
+        const name = d.getAttribute("name");
+        const id = d.getAttribute("id");
+        if (name && id) tmpDomainMap.set(name, id);
+      }
+
+      const newCol = (
+        name: string,
+        type: NewColumnSpec["type"],
+        size: string,
+        nullable: boolean,
+        pk: boolean
+      ): NewColumnSpec => ({
+        id: crypto.randomUUID(),
+        name,
+        type,
+        size,
+        scale: "",
+        nullable,
+        pk,
+      });
+
+      addEntityDMv9(tmpDoc, "CUSTOMERS", [
+        newCol("CUSTOMER_ID", "NUMBER", "", false, true),
+        newCol("CUSTOMER_NAME", "VARCHAR2", "100", false, false),
+        newCol("EMAIL", "VARCHAR2", "120", true, false),
+        newCol("CREATED_AT", "DATE", "", false, false),
+      ], tmpDomainMap);
+      addEntityDMv9(tmpDoc, "SALES_ORDERS", [
+        newCol("ORDER_ID", "NUMBER", "", false, true),
+        newCol("CUSTOMER_ID", "NUMBER", "", false, false),
+        newCol("ORDER_DATE", "DATE", "", false, false),
+        newCol("AMOUNT", "NUMBER", "12", false, false),
+      ], tmpDomainMap);
+      addEntityDMv9(tmpDoc, "PRODUCTS", [
+        newCol("PRODUCT_ID", "NUMBER", "", false, true),
+        newCol("PRODUCT_NAME", "VARCHAR2", "120", false, false),
+        newCol("UNIT_PRICE", "NUMBER", "10", false, false),
+        newCol("IN_STOCK", "CHAR", "1", false, false),
+      ], tmpDomainMap);
+
+      const populated = serializeDoc(tmpDoc);
+      const file = new File([populated], "sample-erwin.xml", {
+        type: "application/xml",
+      });
+      // Reuse the regular load pipeline so all the downstream UI updates
+      // (collapse Step 1, populate stat tiles, browse-entities list) just
+      // work — no special-case state path.
+      await dispatch(loadFile(file)).unwrap();
+    } catch (err) {
+      return rejectWithValue(
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+  }
+);
+
+/**
  * Run the OFSAA validator against a clone of the loaded doc with every
  * staged table applied. Doesn't touch the live doc — clones via
  * serialize → re-parse so the XMLDocument the emitter actually

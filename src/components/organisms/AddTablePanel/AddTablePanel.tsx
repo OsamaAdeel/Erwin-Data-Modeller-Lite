@@ -42,6 +42,7 @@ export default function AddTablePanel() {
     canFinalize,
     canGenerate,
     loadFile,
+    loadSample,
     setTableName,
     setDescription,
     addColumn,
@@ -155,6 +156,15 @@ export default function AddTablePanel() {
               loading={loading}
               onFile={(f) => void loadFile(f)}
             />
+            {!parsed && (
+              <p className={styles.sampleHint}>
+                Don't have a model handy?{" "}
+                <button type="button" className={styles.sampleLink} onClick={loadSample}>
+                  Try with a sample model
+                </button>
+                .
+              </p>
+            )}
           </>
         )}
       </Card>
