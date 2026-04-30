@@ -5,6 +5,7 @@ import Card from "@/components/atoms/Card";
 import Input from "@/components/atoms/Input";
 import Badge from "@/components/atoms/Badge";
 import Field from "@/components/molecules/Field";
+import ConfirmModal from "@/components/molecules/ConfirmModal";
 import FileDrop from "@/components/molecules/FileDrop";
 import FolderPicker from "@/components/molecules/FolderPicker";
 import StatTile from "@/components/molecules/StatTile";
@@ -22,6 +23,8 @@ export default function AddTablePanel() {
   // dropzone + folder picker don't dominate the page on subsequent edits.
   // The "Change" button below the summary expands it back.
   const [showUploaders, setShowUploaders] = useState(true);
+  // Confirm modal for the finalize action (replaces window.confirm).
+  const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
   const {
     parsed,
     loadError,
@@ -89,8 +92,12 @@ export default function AddTablePanel() {
 
   function handleFinalize() {
     if (!canFinalize) return;
-    const confirmed = window.confirm(t.sections.finalize.confirmFinalize);
-    if (confirmed) finalize();
+    setFinalizeConfirmOpen(true);
+  }
+
+  function confirmFinalize() {
+    setFinalizeConfirmOpen(false);
+    finalize();
   }
 
   // ⌘/Ctrl+Enter from inside the panel commits the staged table. The
@@ -371,6 +378,15 @@ export default function AddTablePanel() {
           )}
         </Card>
       )}
+      <ConfirmModal
+        open={finalizeConfirmOpen}
+        title="Finalize the model?"
+        message={t.sections.finalize.confirmFinalize}
+        confirmLabel="Finalize"
+        cancelLabel="Cancel"
+        onConfirm={confirmFinalize}
+        onCancel={() => setFinalizeConfirmOpen(false)}
+      />
     </div>
   );
 }
