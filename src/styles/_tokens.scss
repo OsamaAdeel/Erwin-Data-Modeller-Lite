@@ -1,0 +1,96 @@
+// =====================================================================
+// Theme tokens — CSS custom properties for runtime light/dark switching.
+//
+// SCSS variables in _variables.scss point at these custom properties so
+// existing component SCSS keeps working untouched. The `_rgb` variants
+// exist because rgba() needs a comma-separated triplet, not a colour.
+//
+// This file emits CSS once. It is imported from src/styles/global.scss,
+// NOT via vite.config.ts additionalData (which would duplicate the
+// :root blocks across every CSS module).
+// =====================================================================
+
+:root,
+[data-theme="light"] {
+  // Brand
+  --color-navy: #0A0E27;
+  --color-navy-dark: #05091A;
+  --color-navy-deep: #000614;
+  --color-primary: #2D6BFF;
+  --color-primary-rgb: 45, 107, 255;
+  --color-primary-dark: #1855E0;
+  --color-primary-soft: #EAF1FF;
+
+  // Surfaces
+  --color-bg: #F5F7FA;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #FAFBFD;
+  --color-border: #E3E7EE;
+  --color-border-2: #CFD6E2;
+
+  // Text
+  --color-text: #1B2133;
+  --color-text-muted: #6B7487;
+  --color-text-dim: #9098A8;
+
+  // Status
+  --color-green: #16A34A;
+  --color-green-rgb: 22, 163, 74;
+  --color-green-soft: #E6F7EC;
+  --color-amber: #B45309;
+  --color-amber-rgb: 180, 83, 9;
+  --color-amber-bg: #FEF7E1;
+  --color-amber-border: #F3D58A;
+  --color-red: #B91C1C;
+  --color-red-rgb: 185, 28, 28;
+  --color-red-bg: #FDECEC;
+
+  // Shadows are subtle in light mode; dark mode uses heavier alpha
+  // because dark backgrounds need stronger contrast for elevation.
+  --shadow-sm: 0 1px 2px rgba(10, 14, 39, 0.06);
+  --shadow-md: 0 4px 16px rgba(10, 14, 39, 0.08);
+  --shadow-lg: 0 10px 40px rgba(10, 14, 39, 0.12);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  // Brand stays vivid; primary brightened so it reads on dark surfaces
+  --color-navy: #0A0E27;
+  --color-navy-dark: #05091A;
+  --color-navy-deep: #000614;
+  --color-primary: #5D8AFF;
+  --color-primary-rgb: 93, 138, 255;
+  --color-primary-dark: #3F70F0;
+  --color-primary-soft: rgba(93, 138, 255, 0.14);
+
+  // Surfaces — layered grays, slightly cool to match the brand
+  --color-bg: #0E1320;
+  --color-surface: #181E2E;
+  --color-surface-alt: #1F2638;
+  --color-border: #2A3043;
+  --color-border-2: #3A4258;
+
+  // Text — high-contrast off-white grading down through muted
+  --color-text: #E5E9F0;
+  --color-text-muted: #A1A8BB;
+  --color-text-dim: #717A91;
+
+  // Status — same hue family, retuned for dark backgrounds
+  --color-green: #2EBE5C;
+  --color-green-rgb: 46, 190, 92;
+  --color-green-soft: rgba(46, 190, 92, 0.16);
+  --color-amber: #D08A2A;
+  --color-amber-rgb: 208, 138, 42;
+  --color-amber-bg: rgba(208, 138, 42, 0.16);
+  --color-amber-border: rgba(208, 138, 42, 0.45);
+  --color-red: #E7484A;
+  --color-red-rgb: 231, 72, 74;
+  --color-red-bg: rgba(231, 72, 74, 0.14);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}

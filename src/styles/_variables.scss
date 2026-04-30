@@ -1,31 +1,34 @@
 // =====================================================================
 // Design tokens — single source of truth for colors, spacing, etc.
+// Color values are sourced from _tokens.scss (CSS custom properties)
+// so theme switching at runtime works without rebuilding SCSS.
 // =====================================================================
 
-// Colors — tkxel-inspired navy + blue palette
-$navy:        #0A0E27;
-$navy-dark:   #05091A;
-$navy-deep:   #000614;
-$primary:     #2D6BFF;
-$primary-dark:#1855E0;
-$primary-soft:#EAF1FF;
+// Colors — point at CSS custom properties defined in _tokens.scss
+$navy:        var(--color-navy);
+$navy-dark:   var(--color-navy-dark);
+$navy-deep:   var(--color-navy-deep);
+$primary:     var(--color-primary);
+$primary-dark:var(--color-primary-dark);
+$primary-soft:var(--color-primary-soft);
 
-$bg:          #F5F7FA;
-$surface:     #FFFFFF;
-$border:      #E3E7EE;
-$border-2:    #CFD6E2;
+$bg:          var(--color-bg);
+$surface:     var(--color-surface);
+$surface-alt: var(--color-surface-alt);
+$border:      var(--color-border);
+$border-2:    var(--color-border-2);
 
-$text:        #1B2133;
-$text-muted:  #6B7487;
-$text-dim:    #9098A8;
+$text:        var(--color-text);
+$text-muted:  var(--color-text-muted);
+$text-dim:    var(--color-text-dim);
 
-$green:       #16A34A;
-$green-soft:  #E6F7EC;
-$amber:       #B45309;
-$amber-bg:    #FEF7E1;
-$amber-border:#F3D58A;
-$red:         #B91C1C;
-$red-bg:      #FDECEC;
+$green:       var(--color-green);
+$green-soft:  var(--color-green-soft);
+$amber:       var(--color-amber);
+$amber-bg:    var(--color-amber-bg);
+$amber-border:var(--color-amber-border);
+$red:         var(--color-red);
+$red-bg:      var(--color-red-bg);
 
 // Spacing scale (8px-based)
 $space-1: 4px;
@@ -53,10 +56,10 @@ $fs-lg: 16px;
 $fs-xl: 18px;
 $fs-2xl: 22px;
 
-// Shadows
-$shadow-sm: 0 1px 2px rgba(10, 14, 39, 0.06);
-$shadow-md: 0 4px 16px rgba(10, 14, 39, 0.08);
-$shadow-lg: 0 10px 40px rgba(10, 14, 39, 0.12);
+// Shadows — also theme-aware via CSS custom properties
+$shadow-sm: var(--shadow-sm);
+$shadow-md: var(--shadow-md);
+$shadow-lg: var(--shadow-lg);
 
 // Layout
 $content-max: 1200px;

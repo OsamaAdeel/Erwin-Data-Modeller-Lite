@@ -2,6 +2,7 @@
 // (variables and mixins are auto-injected via vite.config.ts;
 //  Poppins is loaded via <link> in index.html for parallel fetch)
 
+@import "./tokens";
 @import "./reset";
 
 #root {
@@ -13,3 +14,8 @@
 .hidden { display: none !important; }
 .muted  { color: $text-muted; }
 .mono   { font-family: $font-mono; }
+
+// Smooth color transitions when toggling theme — no flicker.
+:root {
+  transition: background-color 180ms ease, color 180ms ease;
+}
