@@ -8,10 +8,15 @@
   font-size: $fs-sm;
   margin-top: auto;
 }
-.left { display: flex; gap: $space-2; align-items: center; }
+.left { display: flex; gap: $space-2; align-items: center; flex-wrap: wrap; }
 .dot  { opacity: 0.5; }
+.version { font-family: $font-mono; opacity: 0.85; }
 .link {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
   color: rgba(#fff, 0.85);
   text-decoration: none;
   &:hover { color: #fff; text-decoration: underline; }
 }
+.linkIcon { display: inline-block; }

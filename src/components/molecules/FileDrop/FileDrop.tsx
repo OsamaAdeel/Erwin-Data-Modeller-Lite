@@ -76,7 +76,7 @@ export default function FileDrop({
           </>
         ) : (
           <>
-            <div className={styles.icon} aria-hidden>↓</div>
+            <UploadIcon className={styles.icon} />
             <div className={styles.hint}>{hint}</div>
             {subhint && <div className={styles.subhint}>{subhint}</div>}
           </>
@@ -99,5 +99,26 @@ export default function FileDrop({
 
       {error && <div className={styles.error}>{error}</div>}
     </div>
+  );
+}
+
+function UploadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
   );
 }
