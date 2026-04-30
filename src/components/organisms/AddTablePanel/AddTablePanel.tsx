@@ -10,6 +10,7 @@ import StatTile from "@/components/molecules/StatTile";
 import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
 import type { StagedTable } from "@/features/addTable/useAddTable";
+import { generateNextFileName } from "@/services/xml/serialize";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
 
@@ -63,6 +64,11 @@ export default function AddTablePanel() {
   }, [validation]);
 
   const formLocked = isFinalized;
+
+  const nextFileName = useMemo(
+    () => (parsed ? generateNextFileName(parsed.fileName) : ""),
+    [parsed]
+  );
 
   function handleFinalize() {
     if (!canFinalize) return;
@@ -258,6 +264,13 @@ export default function AddTablePanel() {
               {t.sections.finalize.generateBtn}
             </Button>
           </div>
+
+          {canGenerate && nextFileName && (
+            <div className={styles.nextFilePreview}>
+              {t.sections.finalize.nextFilePreview}{" "}
+              <code className={styles.mono}>{nextFileName}</code>
+            </div>
+          )}
 
           {!canFinalize && !isFinalized && stagedTables.length === 0 && (
             <div className={styles.finalizeHint}>{t.sections.finalize.needStagedHint}</div>

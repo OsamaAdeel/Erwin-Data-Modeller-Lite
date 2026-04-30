@@ -256,6 +256,12 @@
   font-style: italic;
 }
 
+.nextFilePreview {
+  margin-top: $space-2;
+  color: $text-muted;
+  font-size: $fs-sm;
+}
+
 .success {
   display: flex;
   align-items: center;

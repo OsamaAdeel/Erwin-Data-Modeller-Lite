@@ -6,7 +6,7 @@ import {
   addEntityClassic,
   addEntityDMv9,
 } from "@/services/xml/emitter";
-import { outputFilename, serializeDoc } from "@/services/xml/serialize";
+import { generateNextFileName, serializeDoc } from "@/services/xml/serialize";
 import { downloadBlob } from "@/utils/download";
 import type { NewColumnSpec, Variant } from "@/services/xml/types";
 import {
@@ -134,7 +134,7 @@ export const generate = createAsyncThunk<SuccessInfo, void, ThunkConfig>(
       throw err;
     }
 
-    const nextName = outputFilename(parsed.fileName);
+    const nextName = generateNextFileName(parsed.fileName);
     const xml = serializeDoc(doc);
     downloadBlob(xml, nextName, "application/xml");
     return {
