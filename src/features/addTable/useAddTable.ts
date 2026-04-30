@@ -15,6 +15,7 @@ import {
   pickFolder as pickFolderThunk,
   refreshFolder as refreshFolderThunk,
   removeColumn as removeColumnAction,
+  reorderColumns as reorderColumnsAction,
   resetForm as resetFormAction,
   selectFolderFile as selectFolderFileThunk,
   setDescription as setDescriptionAction,
@@ -89,6 +90,13 @@ export function useAddTable() {
   const removeColumn = useCallback(
     (id: string) => {
       dispatch(removeColumnAction(id));
+    },
+    [dispatch]
+  );
+
+  const reorderColumns = useCallback(
+    (fromId: string, toId: string, before: boolean) => {
+      dispatch(reorderColumnsAction({ fromId, toId, before }));
     },
     [dispatch]
   );
@@ -188,6 +196,7 @@ export function useAddTable() {
     setDescription,
     addColumn,
     removeColumn,
+    reorderColumns,
     updateColumn,
     setColumnType,
     commitTable,

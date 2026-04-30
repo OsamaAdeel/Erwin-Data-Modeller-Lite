@@ -37,7 +37,8 @@ export default function FolderPicker({
     return (
       <div className={styles.wrap}>
         <div className={styles.emptyHead}>
-          <div>
+          <FolderArtwork className={styles.artwork} />
+          <div className={styles.emptyText}>
             <div className={styles.label}>Preferred folder</div>
             <div className={styles.hint}>{emptyHint}</div>
           </div>
@@ -152,6 +153,35 @@ function FilePicker({ files, selectedId, onSelect, disabled }: FilePickerProps) 
         ))}
       </select>
     </label>
+  );
+}
+
+// Decorative open-folder + document SVG used in the empty state. Stroke
+// uses currentColor so it picks up the surrounding text colour and tone
+// changes between light/dark themes automatically.
+function FolderArtwork({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="56"
+      height="44"
+      viewBox="0 0 56 44"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {/* Back folder body */}
+      <path d="M4 10 a3 3 0 0 1 3 -3 h12 l4 4 h26 a3 3 0 0 1 3 3 v22 a3 3 0 0 1 -3 3 h-44 a3 3 0 0 1 -3 -3 z" />
+      {/* Sheet of paper peeking out */}
+      <rect x="14" y="16" width="20" height="14" rx="1.4" fill="var(--color-surface)" />
+      <line x1="18" y1="20" x2="30" y2="20" />
+      <line x1="18" y1="24" x2="28" y2="24" />
+      {/* Front fold to suggest depth */}
+      <path d="M4 14 h48 l-3 22 h-42 z" fill="var(--color-primary-soft)" stroke="currentColor" />
+    </svg>
   );
 }
 

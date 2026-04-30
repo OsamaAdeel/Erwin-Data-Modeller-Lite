@@ -156,7 +156,9 @@
 
 .colsHeader {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.4fr 56px 56px 32px;
+  // Leading 24px slot mirrors ColumnRow's drag-handle column so the
+  // headers stay aligned with the inputs below them.
+  grid-template-columns: 24px 2fr 1fr 1.4fr 56px 56px 32px;
   gap: $space-2;
   font-size: $fs-xs;
   font-weight: 600;
@@ -314,6 +316,22 @@
   gap: $space-3;
   margin-bottom: $space-3;
   flex-wrap: wrap;
+}
+
+// Badge wrapper that remounts on each isFinalized flip so the
+// keyframe runs exactly once per state transition.
+.finalizeBadgeWrap {
+  display: inline-flex;
+}
+
+.finalizeBadgeFlash {
+  animation: finalize-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+}
+
+@keyframes finalize-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
 }
 
 .finalizeSummary {

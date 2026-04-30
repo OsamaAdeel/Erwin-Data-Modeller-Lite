@@ -176,6 +176,24 @@ export default function MergePanel() {
                     >
                       {t.plan.moveAllRight}
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => m.moveAll("pending", "staged", "table")}
+                      disabled={m.counts.pendingTables === 0}
+                      title="Move only the missing tables — leaves columns pending"
+                    >
+                      → tables only
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => m.moveAll("pending", "staged", "column")}
+                      disabled={m.counts.pendingColumns === 0}
+                      title="Move only the missing columns — leaves tables pending"
+                    >
+                      → columns only
+                    </Button>
                   </div>
                 </div>
 
@@ -230,6 +248,24 @@ export default function MergePanel() {
                       disabled={staged.length === 0}
                     >
                       {t.plan.moveAllLeft}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => m.moveAll("staged", "pending", "table")}
+                      disabled={m.counts.stagedTables === 0}
+                      title="Send only the staged tables back — leaves columns staged"
+                    >
+                      ← tables only
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => m.moveAll("staged", "pending", "column")}
+                      disabled={m.counts.stagedColumns === 0}
+                      title="Send only the staged columns back — leaves tables staged"
+                    >
+                      ← columns only
                     </Button>
                   </div>
                 </div>

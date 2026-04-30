@@ -42,6 +42,7 @@ export default function AddTablePanel() {
     setDescription,
     addColumn,
     removeColumn,
+    reorderColumns,
     updateColumn,
     commitTable,
     deleteStagedTable,
@@ -211,6 +212,7 @@ export default function AddTablePanel() {
 
             <div className={`${styles.colsBlock} ${!validation.tableNameValid ? styles.colsLocked : ""}`}>
               <div className={styles.colsHeader}>
+                <span title="Drag to reorder">⋮⋮</span>
                 <span>Name</span>
                 <span>Type</span>
                 <span>Size / scale</span>
@@ -225,8 +227,10 @@ export default function AddTablePanel() {
                     column={c}
                     error={errorByColId.get(c.id)}
                     isOnly={columns.length === 1}
+                    locked={formLocked}
                     onChange={(patch) => updateColumn(c.id, patch)}
                     onRemove={() => removeColumn(c.id)}
+                    onReorder={reorderColumns}
                   />
                 ))}
               </div>
@@ -294,9 +298,16 @@ export default function AddTablePanel() {
       {parsed && (
         <Card step={5} title={t.sections.finalize.heading}>
           <div className={styles.finalizeHead}>
-            <Badge tone={isFinalized ? "success" : "warning"}>
-              {isFinalized ? t.sections.finalize.finalizedLabel : t.sections.finalize.draftLabel}
-            </Badge>
+            {/* key={String(isFinalized)} forces a remount on every flip
+                so the wrapper's one-shot CSS animation re-fires. */}
+            <span
+              key={String(isFinalized)}
+              className={`${styles.finalizeBadgeWrap} ${isFinalized ? styles.finalizeBadgeFlash : ""}`}
+            >
+              <Badge tone={isFinalized ? "success" : "warning"}>
+                {isFinalized ? t.sections.finalize.finalizedLabel : t.sections.finalize.draftLabel}
+              </Badge>
+            </span>
             <div className={styles.finalizeSummary}>
               <span>{t.sections.finalize.summaryTables.replace("{n}", String(stagedTables.length))}</span>
               <span className={styles.finalizeSummaryDot}>·</span>
