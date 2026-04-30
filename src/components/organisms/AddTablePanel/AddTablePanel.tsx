@@ -107,11 +107,20 @@ export default function AddTablePanel() {
       {parsed && (
         <Card step={2} title={t.sections.info.heading}>
           <div className={styles.tileGrid}>
-            <StatTile label={t.sections.info.entitiesLabel} value={parsed.entityDict.size} />
-            <StatTile label={t.sections.info.domainsLabel} value={parsed.domainMap.size} />
+            <StatTile
+              label={t.sections.info.entitiesLabel}
+              value={parsed.entityDict.size}
+              hint="An entity is one logical table in the model — for example CUSTOMER or ORDER."
+            />
+            <StatTile
+              label={t.sections.info.domainsLabel}
+              value={parsed.domainMap.size}
+              hint="A domain is a reusable column type definition (e.g. an AMOUNT domain shared across all amount columns) defined once in the model and referenced by attributes."
+            />
             <StatTile
               label={t.sections.info.variantLabel}
               value={<span className={styles.variantValue}>{parsed.variant}</span>}
+              hint="erwin-dm-v9 = the modern erwin Data Modeler 9.x XML schema (uses the EMX namespace). erwin-classic = the older flat XML format. Merge and ERD require dm-v9."
             />
           </div>
 

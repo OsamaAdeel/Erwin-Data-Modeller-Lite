@@ -3,7 +3,10 @@
   border: 1px solid $border;
   border-radius: $radius-sm;
   padding: $space-3 $space-4;
+  cursor: default;
 }
+
+.hintMark { opacity: 0.6; font-size: 0.85em; }
 .value { font-size: 28px; font-weight: 700; color: $text; line-height: 1.1; }
 .label {
   font-size: $fs-xs;

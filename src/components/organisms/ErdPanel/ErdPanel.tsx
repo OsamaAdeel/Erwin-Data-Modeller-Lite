@@ -51,9 +51,21 @@ export default function ErdPanel() {
       {erd.data && erd.stats && (
         <Card step={2} title={t.view.heading} subtitle={t.view.subhint}>
           <div className={styles.tileGrid}>
-            <StatTile label={t.view.tilesEntities} value={erd.stats.entities} />
-            <StatTile label={t.view.tilesRelationships} value={erd.stats.relationships} />
-            <StatTile label={t.view.tilesDomains} value={erd.stats.domains} />
+            <StatTile
+              label={t.view.tilesEntities}
+              value={erd.stats.entities}
+              hint="An entity is one logical table — each becomes a card in the diagram."
+            />
+            <StatTile
+              label={t.view.tilesRelationships}
+              value={erd.stats.relationships}
+              hint="A parent–child link between two entities (e.g. CUSTOMER → ORDER)."
+            />
+            <StatTile
+              label={t.view.tilesDomains}
+              value={erd.stats.domains}
+              hint="A reusable column type (e.g. AMOUNT, DATE) defined in the model and referenced by attributes."
+            />
           </div>
 
           {erd.stats.entities === 0 ? (
