@@ -11,6 +11,52 @@
   margin-top: $space-2;
 }
 
+// Search row — sits between the stat tiles and the ERD viewport on the
+// View card. The input grows to fill available width; the counter trails
+// on the right.
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  margin: $space-3 0;
+}
+
+.searchInputWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.searchClear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  color: $text-muted;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:hover {
+    background: $surface-alt;
+    color: $text;
+  }
+}
+
+.searchCounter {
+  font-family: $font-mono;
+  font-size: $fs-sm;
+  color: $text-muted;
+  white-space: nowrap;
+}
+
 .explainer {
   margin: 0 0 $space-4;
   padding: $space-3 $space-4;
