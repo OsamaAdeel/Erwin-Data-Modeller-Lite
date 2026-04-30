@@ -26,6 +26,9 @@ export default function ErdPanel() {
   return (
     <div className={styles.wrap}>
       <Card step={1} title={t.load.heading} subtitle={t.load.subhint}>
+        {!erd.data && (
+          <p className={styles.explainer}>{t.load.explainer}</p>
+        )}
         <FileDrop
           hint={t.load.dropHint}
           subhint={t.load.dropSubhint}

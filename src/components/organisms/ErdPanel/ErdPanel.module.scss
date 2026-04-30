@@ -11,6 +11,18 @@
   margin-top: $space-2;
 }
 
+.explainer {
+  margin: 0 0 $space-4;
+  padding: $space-3 $space-4;
+  background: $surface-alt;
+  border: 1px solid $border;
+  border-left: 3px solid $primary;
+  border-radius: $radius-sm;
+  color: $text-muted;
+  font-size: $fs-sm;
+  line-height: 1.5;
+}
+
 .tileGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

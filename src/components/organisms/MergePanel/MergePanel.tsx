@@ -57,6 +57,9 @@ export default function MergePanel() {
     <div className={styles.wrap}>
       {/* ---------- Step 1: Load ---------- */}
       <Card step={1} title={t.load.heading}>
+        {!m.source && !m.target && (
+          <p className={styles.explainer}>{t.load.explainer}</p>
+        )}
         <div className={styles.dropGrid}>
           <SlotDrop
             role="source"

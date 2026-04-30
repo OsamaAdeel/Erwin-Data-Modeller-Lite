@@ -5,6 +5,7 @@
     "load": {
       "heading": "1. Upload XML",
       "subhint": "Drop an erwin-dm-v9 file to render its tables and relationships.",
+      "explainer": "Drop a DM 9.x XML and we'll lay it out automatically — every entity becomes a card, every parent-child relationship becomes a labelled arrow. The whole render runs locally in your browser; the file is never uploaded.",
       "dropHint": "Drop your erwin XML here or click to browse",
       "dropSubhint": "Supports erwin DM 9.x exports"
     },
