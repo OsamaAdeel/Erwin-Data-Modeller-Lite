@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { COMMON } from "@/CONSTANTS";
 import AppShell from "@/layout/AppShell";
 import TabBar, { type TabItem } from "@/components/molecules/TabBar";
+import HotkeysModal, { useGlobalHelpHotkey } from "@/components/molecules/HotkeysModal";
 import AddTablePanel from "@/components/organisms/AddTablePanel";
 import MergePanel from "@/components/organisms/MergePanel";
 import ErdPanel from "@/components/organisms/ErdPanel";
@@ -50,12 +51,21 @@ const TABS: ReadonlyArray<TabItem<TabKey>> = [
 
 export default function App() {
   const [active, setActive] = useState<TabKey>("add");
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
+  useGlobalHelpHotkey(openHelp);
+
   return (
-    <AppShell>
-      <TabBar tabs={TABS} active={active} onChange={setActive} />
-      {active === "add" && <AddTablePanel />}
-      {active === "merge" && <MergePanel />}
-      {active === "erd" && <ErdPanel />}
-    </AppShell>
+    <>
+      <AppShell onHelp={openHelp}>
+        <TabBar tabs={TABS} active={active} onChange={setActive} />
+        {active === "add" && <AddTablePanel />}
+        {active === "merge" && <MergePanel />}
+        {active === "erd" && <ErdPanel />}
+      </AppShell>
+      <HotkeysModal open={helpOpen} onClose={closeHelp} />
+    </>
   );
 }

@@ -21,6 +21,30 @@
   gap: $space-2;
 }
 
+// Shared 36×36 icon button for the actions slot. Mirrors ThemeToggle's
+// look so the help and theme buttons read as a pair.
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-sm;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, transform 80ms ease;
+
+  &:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+  &:active { transform: translateY(1px); }
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: 2px;
+  }
+
+  svg { display: block; }
+}
+
 .logo {
   display: block;
   height: auto;

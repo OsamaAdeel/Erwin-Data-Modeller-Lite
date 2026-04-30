@@ -5,12 +5,15 @@ import styles from "./AppShell.module.scss";
 
 export interface AppShellProps {
   children: ReactNode;
+  /** Click handler for the TopBar's "?" help button. Optional so tests
+   *  and Storybook-style usage can render without it. */
+  onHelp?: () => void;
 }
 
-export default function AppShell({ children }: AppShellProps) {
+export default function AppShell({ children, onHelp }: AppShellProps) {
   return (
     <>
-      <TopBar />
+      <TopBar onHelp={onHelp} />
       <main className={styles.main}>
         <div className={styles.wrap}>{children}</div>
       </main>
