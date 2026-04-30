@@ -20,6 +20,10 @@ a { color: inherit; text-decoration: none; }
 img, svg, video { display: block; max-width: 100%; }
 ul, ol { list-style: none; padding: 0; margin: 0; }
 
+// Theme-aware scrollbar styling. Dark-mode default browser scrollbars are
+// jarring (too bright); these blend into the surface instead.
 ::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: $border-2; border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: $text-dim; }
+* { scrollbar-color: var(--color-border-2) transparent; }

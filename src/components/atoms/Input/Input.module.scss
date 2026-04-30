@@ -11,11 +11,11 @@
   &:focus {
     outline: none;
     border-color: $primary;
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), var(--focus-ring-alpha));
   }
 }
 
 .invalid {
   border-color: $red;
-  &:focus { box-shadow: 0 0 0 3px rgba(var(--color-red-rgb), 0.15); }
+  &:focus { box-shadow: 0 0 0 3px rgba(var(--color-red-rgb), var(--focus-ring-alpha)); }
 }
