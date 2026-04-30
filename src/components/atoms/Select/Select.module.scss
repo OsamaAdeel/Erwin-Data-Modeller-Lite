@@ -1,0 +1,143 @@
+// Visual contract: trigger should be indistinguishable from the Input
+// atom at rest (same height, border, focus ring), with a chevron on the
+// right and a popover styled like a dropdown menu.
+
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.trigger {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2;
+  padding: 9px 12px;
+  border: 1px solid $border-2;
+  border-radius: $radius-sm;
+  background: $surface;
+  color: $text;
+  font-family: $font-mono;
+  font-size: $fs-md;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:focus {
+    outline: none;
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), var(--focus-ring-alpha));
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: $surface-alt;
+  }
+
+  &[aria-expanded="true"] {
+    border-color: $primary;
+
+    .chevron { transform: rotate(180deg); }
+  }
+}
+
+.invalid {
+  border-color: $red;
+
+  &:focus {
+    box-shadow: 0 0 0 3px rgba(var(--color-red-rgb), var(--focus-ring-alpha));
+  }
+}
+
+// Empty value → render the placeholder in the muted text colour and the
+// sans family so it visibly differs from a real selection (mono).
+.placeholder {
+  color: $text-muted;
+  font-family: $font-sans;
+}
+
+.triggerLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: $text-muted;
+  display: inline-flex;
+  flex-shrink: 0;
+  transition: transform 120ms ease;
+}
+
+// Popover positioned absolutely below the trigger by default; the .flip
+// modifier swaps it to above when there's more room overhead.
+.listbox {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: $space-1 0;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  box-shadow: $shadow-md;
+  list-style: none;
+}
+
+.listboxFlip {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  padding: 7px 12px;
+  font-family: $font-mono;
+  font-size: $fs-md;
+  color: $text;
+  cursor: pointer;
+}
+
+// Hover and keyboard-focus share the same highlight so behaviour reads
+// the same whether you're using the mouse or the arrow keys.
+.optionActive {
+  background: $primary-soft;
+}
+
+.optionSelected {
+  color: $primary;
+  font-weight: 600;
+}
+
+.optionLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optionHint {
+  flex-shrink: 0;
+  font-size: $fs-sm;
+  color: $text-muted;
+  font-family: $font-sans;
+}
+
+.empty {
+  padding: $space-2 $space-3;
+  color: $text-muted;
+  font-style: italic;
+  font-family: $font-sans;
+}

@@ -63,22 +63,6 @@
 .dropAbove::before { opacity: 1; }
 .dropBelow::after  { opacity: 1; }
 
-.select {
-  padding: 9px 10px;
-  border: 1px solid $border-2;
-  border-radius: $radius-sm;
-  background: $surface;
-  font-family: $font-mono;
-  font-size: $fs-md;
-  cursor: pointer;
-
-  &:focus {
-    outline: none;
-    border-color: $primary;
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), var(--focus-ring-alpha));
-  }
-}
-
 .sizeCell { display: flex; }
 .numberPair {
   display: grid;
