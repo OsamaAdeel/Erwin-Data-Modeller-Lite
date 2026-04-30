@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
+import Select, { type SelectOption } from "@/components/atoms/Select";
 import { formatFileSize } from "@/services/folder/folderScan";
 import type {
   FolderFileMeta,
@@ -134,24 +135,24 @@ interface FilePickerProps {
 }
 
 function FilePicker({ files, selectedId, onSelect, disabled }: FilePickerProps) {
+  // Map folder files to Select options. The newest file (index 0) gets a
+  // ★ marker so it's spottable in the popover; the timestamp goes into
+  // the option's right-aligned hint so labels stay readable.
+  const options: SelectOption[] = files.map((f, i) => ({
+    value: f.id,
+    label: `${i === 0 ? "★ " : ""}${f.name}`,
+    hint: formatTimestamp(f.lastModified),
+  }));
   return (
     <label className={styles.dropdownWrap}>
       <span className={styles.dropdownLabel}>Override:</span>
-      <select
-        className={styles.dropdown}
+      <Select
+        options={options}
         value={selectedId ?? ""}
         disabled={disabled}
-        onChange={(e) => {
-          if (e.target.value) onSelect(e.target.value);
-        }}
-      >
-        {files.map((f, i) => (
-          <option key={f.id} value={f.id}>
-            {i === 0 ? "★ " : ""}
-            {f.name} — {formatTimestamp(f.lastModified)}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => onSelect(v)}
+        aria-label="Override the auto-selected file"
+      />
     </label>
   );
 }

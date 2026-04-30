@@ -1,7 +1,8 @@
-import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import { DragEvent, useMemo, useRef, useState } from "react";
 import { DATA_TYPES, MAX_IDENTIFIER_LEN, TYPE_LIMITS } from "@/services/ddl/oracleParser";
 import type { DataType, NewColumnSpec } from "@/services/xml/types";
 import Input from "@/components/atoms/Input";
+import Select, { type SelectOption } from "@/components/atoms/Select";
 import styles from "./ColumnRow.module.scss";
 
 const DRAG_MIME = "application/x-erwin-column-id";
@@ -27,14 +28,17 @@ export default function ColumnRow({
   onReorder,
 }: ColumnRowProps) {
   const limits = TYPE_LIMITS[column.type] ?? {};
+  const typeOptions = useMemo<SelectOption[]>(
+    () => DATA_TYPES.map((t) => ({ value: t, label: t })),
+    []
+  );
   const rowRef = useRef<HTMLDivElement>(null);
   // "above" / "below" indicates which half of THIS row is currently
   // being hovered during a drag — drives the drop-indicator border.
   const [dragOver, setDragOver] = useState<"above" | "below" | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const handleType = (e: ChangeEvent<HTMLSelectElement>) =>
-    onChange({ type: e.target.value as DataType });
+  const handleType = (next: string) => onChange({ type: next as DataType });
 
   function handleDragStart(e: DragEvent<HTMLElement>) {
     if (locked || !onReorder) return;
@@ -105,11 +109,13 @@ export default function ColumnRow({
           invalid={error?.isNameError ?? false}
           onChange={(e) => onChange({ name: e.target.value })}
         />
-        <select className={styles.select} value={column.type} onChange={handleType}>
-          {DATA_TYPES.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
+        <Select
+          options={typeOptions}
+          value={column.type}
+          onChange={handleType}
+          disabled={locked}
+          aria-label="Column type"
+        />
         <div className={styles.sizeCell}>
           {(column.type === "VARCHAR2" || column.type === "CHAR") && (
             <Input
