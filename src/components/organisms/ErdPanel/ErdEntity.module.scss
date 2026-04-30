@@ -2,6 +2,19 @@
 // .dim renders unmatched entities translucent and slightly desaturated;
 // match-state outlines come from an inline stroke override on the rect.
 
+.entityGroup {
+  // Default <g> elements have no focus indicator. We turn off the
+  // browser default outline (which would clip oddly with the rounded
+  // rect inside) and substitute a primary-coloured halo via a CSS
+  // filter — survives SVG scaling cleanly.
+  outline: none;
+
+  &:focus-visible {
+    filter: drop-shadow(0 0 0 var(--color-primary))
+            drop-shadow(0 0 6px rgba(var(--color-primary-rgb), 0.55));
+  }
+}
+
 .dim {
   opacity: 0.25;
   filter: grayscale(0.6);

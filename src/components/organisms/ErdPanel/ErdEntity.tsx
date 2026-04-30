@@ -41,9 +41,16 @@ export default function ErdEntity({
   return (
     <g
       transform={`translate(${x}, ${y})`}
+      // Keyboard focus mirrors hover semantics so Tab nav reveals the
+      // same relationship highlights mouse users get.
+      tabIndex={0}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={isDimmed ? styles.dim : ""}
+      onFocus={onMouseEnter}
+      onBlur={onMouseLeave}
+      role="group"
+      aria-label={`Entity ${entity.name} with ${entity.columns.length} column${entity.columns.length === 1 ? "" : "s"}`}
+      className={`${styles.entityGroup} ${isDimmed ? styles.dim : ""}`}
       style={{ cursor: "default" }}
     >
       {/* card body */}
