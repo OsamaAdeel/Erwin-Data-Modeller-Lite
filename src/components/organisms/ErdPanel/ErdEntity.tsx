@@ -36,14 +36,21 @@ export default function ErdEntity({
   // colour but hover gets a thicker stroke to read like a focus state).
   const showOutline = highlighted || isMatched;
   const outlineWidth = highlighted ? 2 : isMatched ? 1.5 : 1;
-  const outlineColor = showOutline ? "var(--color-primary)" : "#CFD6E2";
+  const outlineColor = showOutline ? "var(--color-primary)" : "var(--color-border-2)";
 
   return (
     <g
       transform={`translate(${x}, ${y})`}
+      // Keyboard focus mirrors hover semantics so Tab nav reveals the
+      // same relationship highlights mouse users get.
+      tabIndex={0}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={isDimmed ? styles.dim : ""}
+      onFocus={onMouseEnter}
+      onBlur={onMouseLeave}
+      role="group"
+      aria-label={`Entity ${entity.name} with ${entity.columns.length} column${entity.columns.length === 1 ? "" : "s"}`}
+      className={`${styles.entityGroup} ${isDimmed ? styles.dim : ""}`}
       style={{ cursor: "default" }}
     >
       {/* card body */}
@@ -54,19 +61,19 @@ export default function ErdEntity({
         height={height}
         rx={8}
         ry={8}
-        fill="#FFFFFF"
+        fill="var(--color-surface)"
         stroke={outlineColor}
         strokeWidth={outlineWidth}
       />
-      {/* header */}
+      {/* header — navy stays navy in both themes (matches the brand mark) */}
       <rect
         x={0}
         y={0}
         width={width}
         height={HEADER_H}
-        fill="#0A0E27"
+        fill="var(--color-navy)"
       />
-      <rect x={0} y={0} width={width} height={HEADER_H} rx={8} ry={8} fill="#0A0E27" />
+      <rect x={0} y={0} width={width} height={HEADER_H} rx={8} ry={8} fill="var(--color-navy)" />
       <text
         x={12}
         y={HEADER_H / 2 + 4}
@@ -88,7 +95,7 @@ export default function ErdEntity({
               y={ry + ROW_H - 5}
               fontFamily="ui-monospace, Menlo, Consolas, monospace"
               fontSize={11}
-              fill="#1B2133"
+              fill="var(--color-text)"
             >
               {c.isPk ? "🔑 " : ""}{truncate(c.name, 20)}
             </text>
@@ -99,7 +106,7 @@ export default function ErdEntity({
                 textAnchor="end"
                 fontFamily="ui-monospace, Menlo, Consolas, monospace"
                 fontSize={10}
-                fill="#6B7487"
+                fill="var(--color-text-muted)"
               >
                 {truncate(c.physicalDataType, 12)}
               </text>
@@ -115,7 +122,7 @@ export default function ErdEntity({
           textAnchor="middle"
           fontFamily="system-ui, sans-serif"
           fontSize={10}
-          fill="#6B7487"
+          fill="var(--color-text-muted)"
           fontStyle="italic"
         >
           +{overflow} more column{overflow === 1 ? "" : "s"}

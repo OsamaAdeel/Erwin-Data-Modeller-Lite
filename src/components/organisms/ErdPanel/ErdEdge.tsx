@@ -12,7 +12,7 @@ export default function ErdEdge({ edge, highlighted, isDimmed }: ErdEdgeProps) {
   if (edge.points.length < 2) return null;
 
   const d = pointsToPath(edge.points);
-  const stroke = highlighted ? "#2D6BFF" : "#9098A8";
+  const stroke = highlighted ? "var(--color-primary)" : "var(--color-text-dim)";
   const strokeWidth = highlighted ? 2 : 1.25;
   const last = edge.points[edge.points.length - 1];
   const prev = edge.points[edge.points.length - 2];

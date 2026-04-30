@@ -25,7 +25,7 @@
   min-width: 0;
 }
 
-.loadedIcon { font-size: 22px; }
+.loadedIcon { color: $primary; flex-shrink: 0; }
 
 .loadedSummaryText {
   display: flex;
@@ -47,6 +47,25 @@
 .loadedSummaryMeta {
   font-size: $fs-sm;
   color: $text-muted;
+}
+
+// "Don't have a model handy? Try with a sample model" — onboarding aid
+// shown only on first paint when nothing has been loaded yet.
+.sampleHint {
+  margin: $space-3 0 0;
+  text-align: center;
+  font-size: $fs-sm;
+  color: $text-muted;
+}
+
+.sampleLink {
+  background: transparent;
+  color: $primary;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:hover { color: $primary-dark; }
 }
 
 .uploadSeparator {
@@ -180,6 +199,52 @@
   margin-top: $space-3;
 }
 
+// Toolbar above the column grid (currently just the "Paste DDL" toggle).
+.colsToolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: $space-2;
+}
+
+// Paste-DDL alternate mode for the .colsBlock.
+.ddlPaste {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.ddlIntro {
+  font-size: $fs-sm;
+  color: $text-muted;
+  line-height: 1.5;
+
+  code {
+    font-family: $font-mono;
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: 3px;
+    padding: 0 4px;
+  }
+}
+
+.ddlActions {
+  display: flex;
+  gap: $space-2;
+}
+
+.ddlWarnings {
+  background: $amber-bg;
+  border: 1px solid $amber-border;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+  font-size: $fs-sm;
+  color: $amber;
+
+  strong { display: block; margin-bottom: $space-1; }
+  ul { margin: 0; padding-left: $space-4; }
+  li { margin: 2px 0; }
+}
+
 .warnings {
   display: flex;
   flex-direction: column;
@@ -206,10 +271,12 @@
 }
 
 // Generate XML button gets a subtle "ready to fire" pulse the first
-// time it becomes enabled. The animation runs three times (~1.5s) and
-// stops; further interactions don't re-trigger it.
+// time it becomes enabled. Pulse only runs when the user hasn't asked
+// for reduced motion (prefers-reduced-motion: reduce).
 .generateReady {
-  animation: generate-ready-pulse 600ms ease-out 3;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: generate-ready-pulse 600ms ease-out 3;
+  }
 }
 
 @keyframes generate-ready-pulse {
@@ -325,7 +392,9 @@
 }
 
 .finalizeBadgeFlash {
-  animation: finalize-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: finalize-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+  }
 }
 
 @keyframes finalize-pop {
@@ -367,6 +436,111 @@
   border-radius: $radius-sm;
   color: $green;
   margin-top: $space-3;
+}
+
+// OFSAA validator panels — green for clean, red for violations.
+.validationOk {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3;
+  background: $green-soft;
+  border: 1px solid rgba(var(--color-green-rgb), 0.3);
+  border-radius: $radius-sm;
+  color: $green;
+  margin-top: $space-3;
+  font-size: $fs-sm;
+}
+
+.validationFail {
+  margin-top: $space-3;
+  border: 1px solid rgba(var(--color-red-rgb), 0.35);
+  background: $red-bg;
+  border-radius: $radius-sm;
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-3;
+    cursor: pointer;
+    color: $red;
+    font-weight: 500;
+  }
+}
+
+.validationBody {
+  padding: 0 $space-3 $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.validationGroup {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+}
+
+.validationRule {
+  margin: 0 0 $space-2;
+  font-size: $fs-sm;
+  font-weight: 600;
+  color: $text;
+  letter-spacing: 0.04em;
+}
+
+.validationCount {
+  color: $text-muted;
+  font-weight: 400;
+}
+
+.validationList {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  list-style: none;
+}
+
+.validationItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: $fs-sm;
+  color: $text;
+  padding: $space-1 0;
+  border-top: 1px solid $border;
+
+  &:first-child { border-top: none; }
+}
+
+.validationContext {
+  font-family: $font-mono;
+  font-size: $fs-xs;
+  color: $text-muted;
+}
+
+.successText { flex: 1; min-width: 0; }
+
+.successDismiss {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  color: $green;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+
+  &:hover { opacity: 1; background: rgba(var(--color-green-rgb), 0.15); }
 }
 
 .mono {

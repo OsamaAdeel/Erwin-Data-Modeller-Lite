@@ -76,7 +76,7 @@
   max-width: 100%;
 }
 
-.folderIcon { font-size: 16px; }
+.folderIcon { color: $primary; flex-shrink: 0; }
 
 .headerActions {
   display: flex;

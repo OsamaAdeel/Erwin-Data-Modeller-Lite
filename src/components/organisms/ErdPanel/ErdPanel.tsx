@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { COMMON, ERD } from "@/CONSTANTS";
 import Button from "@/components/atoms/Button";
 import Card from "@/components/atoms/Card";
@@ -12,6 +12,17 @@ import ErdEdge from "./ErdEdge";
 import ErdViewport from "./ErdViewport";
 import styles from "./ErdPanel.module.scss";
 
+// Tiny standalone debounce. Inline rather than a shared hook because it's
+// the only call site in the project right now — promote later if reused.
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export default function ErdPanel() {
   const t = ERD.sections;
   const erd = useErd();
@@ -19,17 +30,22 @@ export default function ErdPanel() {
   const [search, setSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Debounce the search 100 ms before recomputing the match set. Invisible
+  // on small models (matched within 100 ms feels instant); on a 500-entity
+  // model this stops the per-keystroke filter from feeling sluggish.
+  const debouncedSearch = useDebouncedValue(search, 100);
+
   // Build the matched-id set on every render — O(N) over entities. Empty
   // search short-circuits to an empty set so dim/match logic is a no-op.
   const matchedIds = useMemo<Set<string>>(() => {
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     if (!q || !erd.data) return new Set();
     const out = new Set<string>();
     for (const ent of erd.data.model.entities) {
       if (ent.name.toLowerCase().includes(q)) out.add(ent.id);
     }
     return out;
-  }, [search, erd.data]);
+  }, [debouncedSearch, erd.data]);
 
   const totalEntities = erd.data?.model.entities.length ?? 0;
   const isSearching = search.trim().length > 0;

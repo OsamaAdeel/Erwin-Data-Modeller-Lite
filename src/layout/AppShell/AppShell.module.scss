@@ -1,3 +1,26 @@
+// Visually hidden until the link receives keyboard focus, then it
+// pops to the top-left so a sighted keyboard user can confirm and
+// activate it. The classic "skip to content" a11y pattern.
+.skipLink {
+  position: absolute;
+  top: -100px;
+  left: $space-3;
+  z-index: 10000;
+  padding: $space-2 $space-3;
+  background: $primary;
+  color: #fff;
+  border-radius: $radius-sm;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 120ms ease;
+
+  &:focus {
+    top: $space-3;
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
 .main {
   flex: 1;
   display: flex;

@@ -4,7 +4,9 @@ import Button from "@/components/atoms/Button";
 import Card from "@/components/atoms/Card";
 import Input from "@/components/atoms/Input";
 import Badge from "@/components/atoms/Badge";
+import Textarea from "@/components/atoms/Textarea";
 import Field from "@/components/molecules/Field";
+import ConfirmModal from "@/components/molecules/ConfirmModal";
 import FileDrop from "@/components/molecules/FileDrop";
 import FolderPicker from "@/components/molecules/FolderPicker";
 import StatTile from "@/components/molecules/StatTile";
@@ -12,6 +14,8 @@ import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
 import type { StagedTable } from "@/features/addTable/useAddTable";
 import { generateNextFileName } from "@/services/xml/serialize";
+import { parseOracleDdl } from "@/services/ddl/ddlParser";
+import type { OfsaaValidationResult, Violation } from "@/services/xml/validator";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
 
@@ -22,6 +26,12 @@ export default function AddTablePanel() {
   // dropzone + folder picker don't dominate the page on subsequent edits.
   // The "Change" button below the summary expands it back.
   const [showUploaders, setShowUploaders] = useState(true);
+  // Confirm modal for the finalize action (replaces window.confirm).
+  const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
+  // "Paste DDL" mode swaps the column grid for a textarea + Parse button.
+  const [ddlMode, setDdlMode] = useState(false);
+  const [ddlText, setDdlText] = useState("");
+  const [ddlWarnings, setDdlWarnings] = useState<string[]>([]);
   const {
     parsed,
     loadError,
@@ -38,6 +48,7 @@ export default function AddTablePanel() {
     canFinalize,
     canGenerate,
     loadFile,
+    loadSample,
     setTableName,
     setDescription,
     addColumn,
@@ -51,6 +62,10 @@ export default function AddTablePanel() {
     finalize,
     unfinalize,
     generate,
+    validateModel,
+    validationResult,
+    validating,
+    replaceColumns,
     folder,
     pickFolder,
     refreshFolder,
@@ -89,8 +104,12 @@ export default function AddTablePanel() {
 
   function handleFinalize() {
     if (!canFinalize) return;
-    const confirmed = window.confirm(t.sections.finalize.confirmFinalize);
-    if (confirmed) finalize();
+    setFinalizeConfirmOpen(true);
+  }
+
+  function confirmFinalize() {
+    setFinalizeConfirmOpen(false);
+    finalize();
   }
 
   // ⌘/Ctrl+Enter from inside the panel commits the staged table. The
@@ -111,7 +130,7 @@ export default function AddTablePanel() {
         {parsed && !showUploaders ? (
           <div className={styles.loadedSummary}>
             <div className={styles.loadedSummaryBody}>
-              <span className={styles.loadedIcon} aria-hidden>📄</span>
+              <FileGlyph className={styles.loadedIcon} />
               <div className={styles.loadedSummaryText}>
                 <div className={styles.loadedSummaryName} title={parsed.fileName}>
                   {parsed.fileName}
@@ -144,6 +163,15 @@ export default function AddTablePanel() {
               loading={loading}
               onFile={(f) => void loadFile(f)}
             />
+            {!parsed && (
+              <p className={styles.sampleHint}>
+                Don't have a model handy?{" "}
+                <button type="button" className={styles.sampleLink} onClick={loadSample}>
+                  Try with a sample model
+                </button>
+                .
+              </p>
+            )}
           </>
         )}
       </Card>
@@ -223,34 +251,88 @@ export default function AddTablePanel() {
             </div>
 
             <div className={`${styles.colsBlock} ${!validation.tableNameValid ? styles.colsLocked : ""}`}>
-              <div className={styles.colsHeader}>
-                <span title="Drag to reorder">⋮⋮</span>
-                <span>Name</span>
-                <span>Type</span>
-                <span>Size / scale</span>
-                <span title="Nullable">Null</span>
-                <span title="Primary key">PK</span>
-                <span />
-              </div>
-              <div className={styles.colsList}>
-                {columns.map((c) => (
-                  <ColumnRow
-                    key={c.id}
-                    column={c}
-                    error={errorByColId.get(c.id)}
-                    isOnly={columns.length === 1}
-                    locked={formLocked}
-                    onChange={(patch) => updateColumn(c.id, patch)}
-                    onRemove={() => removeColumn(c.id)}
-                    onReorder={reorderColumns}
-                  />
-                ))}
-              </div>
-              <div className={styles.colsActions}>
-                <Button variant="outline" size="sm" onClick={addColumn} disabled={formLocked}>
-                  + Add column
-                </Button>
-              </div>
+              {ddlMode ? (
+                <DdlPasteArea
+                  value={ddlText}
+                  warnings={ddlWarnings}
+                  disabled={formLocked}
+                  onChange={setDdlText}
+                  onCancel={() => {
+                    setDdlMode(false);
+                    setDdlText("");
+                    setDdlWarnings([]);
+                  }}
+                  onParse={() => {
+                    const result = parseOracleDdl(ddlText);
+                    if (result.columns.length === 0) {
+                      setDdlWarnings([
+                        "No columns parsed from this DDL.",
+                        ...result.warnings,
+                      ]);
+                      return;
+                    }
+                    if (result.tableName && !tableName.trim()) {
+                      setTableName(result.tableName);
+                    }
+                    replaceColumns(result.columns);
+                    setDdlMode(false);
+                    setDdlText("");
+                    setDdlWarnings(result.warnings);
+                  }}
+                />
+              ) : (
+                <>
+                  <div className={styles.colsToolbar}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDdlMode(true)}
+                      disabled={formLocked}
+                      title="Paste a CREATE TABLE statement; we'll fill the column rows for you"
+                    >
+                      Paste DDL…
+                    </Button>
+                  </div>
+                  <div className={styles.colsHeader}>
+                    <span title="Drag to reorder">⋮⋮</span>
+                    <span>Name</span>
+                    <span>Type</span>
+                    <span>Size / scale</span>
+                    <span title="Nullable">Null</span>
+                    <span title="Primary key">PK</span>
+                    <span />
+                  </div>
+                  <div className={styles.colsList}>
+                    {columns.map((c) => (
+                      <ColumnRow
+                        key={c.id}
+                        column={c}
+                        error={errorByColId.get(c.id)}
+                        isOnly={columns.length === 1}
+                        locked={formLocked}
+                        onChange={(patch) => updateColumn(c.id, patch)}
+                        onRemove={() => removeColumn(c.id)}
+                        onReorder={reorderColumns}
+                      />
+                    ))}
+                  </div>
+                  <div className={styles.colsActions}>
+                    <Button variant="outline" size="sm" onClick={addColumn} disabled={formLocked}>
+                      + Add column
+                    </Button>
+                  </div>
+                  {ddlWarnings.length > 0 && (
+                    <div className={styles.ddlWarnings}>
+                      <strong>Imported with warnings:</strong>
+                      <ul>
+                        {ddlWarnings.map((w, i) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {validation.warnings.length > 0 && (
@@ -338,6 +420,14 @@ export default function AddTablePanel() {
               </Button>
             )}
             <Button
+              variant="outline"
+              onClick={validateModel}
+              disabled={validating || stagedTables.length === 0}
+              title="Run the OFSAA validator against the model with the staged tables applied — no download"
+            >
+              {validating ? "Validating…" : "Validate model"}
+            </Button>
+            <Button
               size="lg"
               onClick={generate}
               disabled={!canGenerate}
@@ -347,6 +437,10 @@ export default function AddTablePanel() {
               {t.sections.finalize.generateBtn}
             </Button>
           </div>
+
+          {validationResult && (
+            <ValidationPanel result={validationResult} />
+          )}
 
           {canGenerate && nextFileName && (
             <div className={styles.nextFilePreview}>
@@ -371,6 +465,15 @@ export default function AddTablePanel() {
           )}
         </Card>
       )}
+      <ConfirmModal
+        open={finalizeConfirmOpen}
+        title="Finalize the model?"
+        message={t.sections.finalize.confirmFinalize}
+        confirmLabel="Finalize"
+        cancelLabel="Cancel"
+        onConfirm={confirmFinalize}
+        onCancel={() => setFinalizeConfirmOpen(false)}
+      />
     </div>
   );
 }
@@ -386,19 +489,30 @@ function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
   // The parent remounts this component (via key=filename) on each new
   // generate, so this initializer runs exactly when we want it to.
   const [generatedAt] = useState(() => new Date());
+  const [dismissed, setDismissed] = useState(false);
   const timeLabel = generatedAt.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
+  if (dismissed) return null;
   return (
     <div className={styles.success} role="status" aria-live="polite">
       <Badge tone="success">✓</Badge>
-      <span>
+      <span className={styles.successText}>
         Generated{" "}
         <code className={styles.mono}>{filename}</code>
         {" — "}
         {tablesAdded} table{tablesAdded === 1 ? "" : "s"} added at {timeLabel}
       </span>
+      <button
+        type="button"
+        className={styles.successDismiss}
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss"
+        title="Dismiss"
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -419,6 +533,144 @@ function DownloadIcon() {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+// Paste DDL textarea + actions. Lives where the column grid normally
+// renders, parented by the same .colsBlock so visual constraints carry.
+function DdlPasteArea({
+  value,
+  warnings,
+  disabled,
+  onChange,
+  onParse,
+  onCancel,
+}: {
+  value: string;
+  warnings: string[];
+  disabled: boolean;
+  onChange: (v: string) => void;
+  onParse: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className={styles.ddlPaste}>
+      <div className={styles.ddlIntro}>
+        Paste a <code>CREATE TABLE</code> statement (or just the column
+        list). Common Oracle types are recognised; lines we can't parse
+        become warnings.
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={10}
+        disabled={disabled}
+        placeholder={`CREATE TABLE CUSTOMERS (
+  CUSTOMER_ID NUMBER NOT NULL,
+  CUSTOMER_NAME VARCHAR2(100) NOT NULL,
+  EMAIL VARCHAR2(120),
+  CREATED_AT DATE NOT NULL,
+  PRIMARY KEY (CUSTOMER_ID)
+);`}
+        spellCheck={false}
+        autoComplete="off"
+      />
+      {warnings.length > 0 && (
+        <div className={styles.ddlWarnings}>
+          <strong>Couldn't parse:</strong>
+          <ul>
+            {warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className={styles.ddlActions}>
+        <Button onClick={onParse} disabled={disabled || !value.trim()}>
+          Parse DDL
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Inline panel summarising the OFSAA validator's last run. Renders as a
+// banner ("Looks good — N rules checked") on success or a grouped
+// violations list inside a <details> on failure.
+function ValidationPanel({ result }: { result: OfsaaValidationResult }) {
+  const grouped = useMemo(() => {
+    const out = new Map<string, Violation[]>();
+    for (const v of result.violations) {
+      const key = v.rule;
+      const list = out.get(key);
+      if (list) list.push(v);
+      else out.set(key, [v]);
+    }
+    return Array.from(out.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [result]);
+
+  if (result.ok) {
+    return (
+      <div className={styles.validationOk} role="status">
+        <Badge tone="success">✓</Badge>
+        <span>OFSAA validator: 0 violations — model is ready to generate.</span>
+      </div>
+    );
+  }
+
+  return (
+    <details className={styles.validationFail} open>
+      <summary>
+        <Badge tone="danger">!</Badge>
+        <span>
+          OFSAA validator: {result.violations.length} violation{result.violations.length === 1 ? "" : "s"}
+        </span>
+      </summary>
+      <div className={styles.validationBody}>
+        {grouped.map(([rule, items]) => (
+          <section key={rule} className={styles.validationGroup}>
+            <h4 className={styles.validationRule}>
+              {rule} <span className={styles.validationCount}>· {items.length}</span>
+            </h4>
+            <ul className={styles.validationList}>
+              {items.map((v, i) => (
+                <li key={i} className={styles.validationItem}>
+                  {(v.entity || v.column || v.field) && (
+                    <span className={styles.validationContext}>
+                      {[v.entity, v.column, v.field].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                  <span>{v.message}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function FileGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
     </svg>
   );
 }

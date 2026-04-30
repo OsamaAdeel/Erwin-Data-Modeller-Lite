@@ -2,8 +2,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  // 40×40 to clear WCAG 2.5.5 AAA target size; pairs with the TopBar
+  // .iconButton sibling (HelpButton).
+  width: 40px;
+  height: 40px;
   border-radius: $radius-sm;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.9);
