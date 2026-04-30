@@ -9,8 +9,10 @@
   box-shadow: $shadow-sm;
 }
 
-@mixin focus-ring($color: $primary) {
-  outline: 2px solid rgba($color, 0.4);
+// Use the *-rgb CSS custom properties so themes can re-tone the ring
+// without rebuilding SCSS. Pass any --*-rgb token name (default: primary).
+@mixin focus-ring($rgb-var: --color-primary-rgb) {
+  outline: 2px solid rgba(var(#{$rgb-var}), 0.4);
   outline-offset: 2px;
 }
 
