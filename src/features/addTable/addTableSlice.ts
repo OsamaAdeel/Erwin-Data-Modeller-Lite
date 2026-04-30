@@ -10,10 +10,23 @@ import { outputFilename, serializeDoc } from "@/services/xml/serialize";
 import { downloadBlob } from "@/utils/download";
 import type { NewColumnSpec, Variant } from "@/services/xml/types";
 import {
+  FolderPickError,
+  filterXml,
+  pickDirectory,
+  rescanHandle,
+  sortLatest,
+} from "@/services/folder/folderScan";
+import {
+  clearFolderFiles,
+  clearPreferredFolderHandle,
   deleteParsedDoc,
+  getFolderFile,
   getParsedDoc,
+  getPreferredFolderHandle,
   makeParseId,
+  setFolderFile,
   setParsedDoc,
+  setPreferredFolderHandle,
 } from "@/store/refs";
 
 export interface SuccessInfo {
@@ -37,6 +50,26 @@ export interface StagedTable {
   columns: NewColumnSpec[];
 }
 
+export interface FolderFileMeta {
+  id: string;
+  name: string;
+  lastModified: number;
+  size: number;
+}
+
+export interface PreferredFolderState {
+  name: string | null;
+  files: FolderFileMeta[];
+  // Currently selected file id (auto-picked or user-overridden). null when
+  // the folder has no .xml files.
+  selectedFileId: string | null;
+  // True iff the folder was opened via showDirectoryPicker (we hold a handle
+  // and can refresh without re-prompting).
+  refreshable: boolean;
+  loading: boolean;
+  error?: string;
+}
+
 export interface AddTableState {
   parsed: ParsedMeta | null;
   loadError?: string;
@@ -52,6 +85,9 @@ export interface AddTableState {
   // Finalization gate — Generate XML is only possible when true.
   isFinalized: boolean;
   success?: SuccessInfo;
+  // Preferred-folder state. Lives alongside the rest of Step-1 state so the
+  // folder, the auto-selected file, and the parsed doc stay in sync.
+  folder: PreferredFolderState;
 }
 
 function makeColumn(): NewColumnSpec {
@@ -66,6 +102,15 @@ function makeColumn(): NewColumnSpec {
   };
 }
 
+const initialFolderState: PreferredFolderState = {
+  name: null,
+  files: [],
+  selectedFileId: null,
+  refreshable: false,
+  loading: false,
+  error: undefined,
+};
+
 const initialState: AddTableState = {
   parsed: null,
   loadError: undefined,
@@ -77,6 +122,7 @@ const initialState: AddTableState = {
   editingId: null,
   isFinalized: false,
   success: undefined,
+  folder: initialFolderState,
 };
 
 type ThunkConfig = { state: { addTable: AddTableState }; rejectValue: string };
@@ -105,6 +151,130 @@ export const loadFile = createAsyncThunk<ParsedMeta, File, ThunkConfig>(
     }
   }
 );
+
+// --- Preferred-folder thunks --------------------------------------------
+
+export interface PickFolderResult {
+  name: string;
+  files: FolderFileMeta[];
+  refreshable: boolean;
+  // Auto-selected file id (latest .xml). Null if the folder has no .xml files.
+  autoSelectedId: string | null;
+}
+
+/**
+ * Open the OS picker, scan the folder, filter to .xml, sort newest-first,
+ * and stash File handles in the ref store. Returns metadata + the
+ * auto-selected (latest) file id.
+ *
+ * Subsequent dispatches of selectFolderFile / loadFolderSelection use the
+ * ref store to retrieve the actual File payload.
+ */
+export const pickFolder = createAsyncThunk<
+  PickFolderResult | null,
+  void,
+  ThunkConfig
+>("addTable/pickFolder", async (_, { dispatch, rejectWithValue }) => {
+  try {
+    const result = await pickDirectory();
+    if (!result) return null; // user cancelled
+    // Reset prior session — File refs from a previous folder are now stale.
+    clearFolderFiles();
+    clearPreferredFolderHandle();
+    if (result.handle) setPreferredFolderHandle(result.handle);
+
+    const xmlEntries = sortLatest(filterXml(result.files));
+    for (const e of xmlEntries) setFolderFile(e.id, e.file);
+
+    const meta: FolderFileMeta[] = xmlEntries.map((e) => ({
+      id: e.id,
+      name: e.name,
+      lastModified: e.lastModified,
+      size: e.size,
+    }));
+
+    const autoSelectedId = meta[0]?.id ?? null;
+    // Auto-load the latest .xml so Step 1 fully resolves on a single click.
+    // Fire-and-forget; loadFile maintains its own pending/loading state.
+    if (autoSelectedId) {
+      const file = getFolderFile(autoSelectedId);
+      if (file) void dispatch(loadFile(file));
+    }
+
+    return {
+      name: result.folderName,
+      files: meta,
+      refreshable: !!result.handle,
+      autoSelectedId,
+    };
+  } catch (err) {
+    if (err instanceof FolderPickError) return rejectWithValue(err.message);
+    return rejectWithValue(err instanceof Error ? err.message : String(err));
+  }
+});
+
+/**
+ * Re-iterate the persisted directory handle and rebuild the file list.
+ * Re-applies auto-selection of the latest .xml file. Throws if the folder
+ * was opened via the input-fallback path (no handle to refresh from).
+ */
+export const refreshFolder = createAsyncThunk<
+  PickFolderResult,
+  void,
+  ThunkConfig
+>("addTable/refreshFolder", async (_, { dispatch, rejectWithValue }) => {
+  const handle = getPreferredFolderHandle();
+  if (!handle) {
+    return rejectWithValue(
+      "This folder was loaded via file input — pick the folder again to refresh."
+    );
+  }
+  try {
+    const entries = await rescanHandle(handle);
+    clearFolderFiles();
+    const xmlEntries = sortLatest(filterXml(entries));
+    for (const e of xmlEntries) setFolderFile(e.id, e.file);
+
+    const meta: FolderFileMeta[] = xmlEntries.map((e) => ({
+      id: e.id,
+      name: e.name,
+      lastModified: e.lastModified,
+      size: e.size,
+    }));
+
+    const autoSelectedId = meta[0]?.id ?? null;
+    // Refresh implies "give me the newest file again" — so re-load.
+    if (autoSelectedId) {
+      const file = getFolderFile(autoSelectedId);
+      if (file) void dispatch(loadFile(file));
+    }
+
+    return {
+      name: handle.name,
+      files: meta,
+      refreshable: true,
+      autoSelectedId,
+    };
+  } catch (err) {
+    if (err instanceof FolderPickError) return rejectWithValue(err.message);
+    return rejectWithValue(err instanceof Error ? err.message : String(err));
+  }
+});
+
+/**
+ * Look up the File for the given folder-file id and dispatch the existing
+ * loadFile pipeline. Updates folder.selectedFileId on success.
+ */
+export const selectFolderFile = createAsyncThunk<
+  string,                 // id
+  string,                 // file id
+  ThunkConfig
+>("addTable/selectFolderFile", async (id, { dispatch, rejectWithValue }) => {
+  const file = getFolderFile(id);
+  if (!file) return rejectWithValue("Selected file is no longer available — refresh the folder.");
+  await dispatch(loadFile(file));
+  return id;
+});
 
 export const generate = createAsyncThunk<SuccessInfo, void, ThunkConfig>(
   "addTable/generate",
@@ -246,6 +416,11 @@ const slice = createSlice({
     clearSuccess(state) {
       state.success = undefined;
     },
+    clearFolder(state) {
+      state.folder = initialFolderState;
+      clearFolderFiles();
+      clearPreferredFolderHandle();
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -289,6 +464,53 @@ const slice = createSlice({
       })
       .addCase(generate.rejected, (state, action) => {
         state.loadError = action.payload ?? action.error.message;
+      })
+      // --- Preferred folder lifecycle ----------------------------------
+      .addCase(pickFolder.pending, (state) => {
+        state.folder.loading = true;
+        state.folder.error = undefined;
+      })
+      .addCase(pickFolder.fulfilled, (state, action) => {
+        state.folder.loading = false;
+        if (!action.payload) return; // user cancelled — keep prior state
+        const { name, files, refreshable, autoSelectedId } = action.payload;
+        state.folder = {
+          name,
+          files,
+          selectedFileId: autoSelectedId,
+          refreshable,
+          loading: false,
+          error: undefined,
+        };
+      })
+      .addCase(pickFolder.rejected, (state, action) => {
+        state.folder.loading = false;
+        state.folder.error = action.payload ?? action.error.message;
+      })
+      .addCase(refreshFolder.pending, (state) => {
+        state.folder.loading = true;
+        state.folder.error = undefined;
+      })
+      .addCase(refreshFolder.fulfilled, (state, action) => {
+        const { name, files, refreshable, autoSelectedId } = action.payload;
+        state.folder = {
+          name,
+          files,
+          selectedFileId: autoSelectedId,
+          refreshable,
+          loading: false,
+          error: undefined,
+        };
+      })
+      .addCase(refreshFolder.rejected, (state, action) => {
+        state.folder.loading = false;
+        state.folder.error = action.payload ?? action.error.message;
+      })
+      .addCase(selectFolderFile.fulfilled, (state, action) => {
+        state.folder.selectedFileId = action.payload;
+      })
+      .addCase(selectFolderFile.rejected, (state, action) => {
+        state.folder.error = action.payload ?? action.error.message;
       });
   },
 });
@@ -307,6 +529,7 @@ export const {
   finalize,
   unfinalize,
   clearSuccess,
+  clearFolder,
 } = slice.actions;
 
 export default slice.reducer;
