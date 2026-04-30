@@ -314,7 +314,13 @@ export default function AddTablePanel() {
                 {t.sections.finalize.unfinalizeBtn}
               </Button>
             )}
-            <Button onClick={generate} disabled={!canGenerate}>
+            <Button
+              size="lg"
+              onClick={generate}
+              disabled={!canGenerate}
+              className={canGenerate ? styles.generateReady : ""}
+            >
+              <DownloadIcon />
               {t.sections.finalize.generateBtn}
             </Button>
           </div>
@@ -334,19 +340,63 @@ export default function AddTablePanel() {
           )}
 
           {success && (
-            <div className={styles.success}>
-              <Badge tone="success">✓</Badge>
-              <span>
-                {t.messages.addSuccess}{" "}
-                <code className={styles.mono}>{success.filename}</code>
-                {" · "}
-                {success.tablesAdded} table(s) added
-              </span>
-            </div>
+            <GeneratedToast
+              key={success.filename}
+              filename={success.filename}
+              tablesAdded={success.tablesAdded}
+            />
           )}
         </Card>
       )}
     </div>
+  );
+}
+
+interface GeneratedToastProps {
+  filename: string;
+  tablesAdded: number;
+}
+
+function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
+  // Capture the wall-clock time the user actually clicked Generate so the
+  // toast says "generated at 4:42 PM" rather than recomputing on rerender.
+  // The parent remounts this component (via key=filename) on each new
+  // generate, so this initializer runs exactly when we want it to.
+  const [generatedAt] = useState(() => new Date());
+  const timeLabel = generatedAt.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return (
+    <div className={styles.success} role="status" aria-live="polite">
+      <Badge tone="success">✓</Badge>
+      <span>
+        Generated{" "}
+        <code className={styles.mono}>{filename}</code>
+        {" — "}
+        {tablesAdded} table{tablesAdded === 1 ? "" : "s"} added at {timeLabel}
+      </span>
+    </div>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
   );
 }
 
