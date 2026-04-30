@@ -1,0 +1,7 @@
+// Edges between two non-matched entities fade out during search so the
+// user can follow connections from the matched set without losing context.
+
+.dim {
+  opacity: 0.2;
+  transition: opacity 120ms ease;
+}

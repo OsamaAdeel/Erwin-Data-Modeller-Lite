@@ -1,11 +1,14 @@
 import type { EdgeRoute } from "@/features/erd/layout";
+import styles from "./ErdEdge.module.scss";
 
 export interface ErdEdgeProps {
   edge: EdgeRoute;
   highlighted?: boolean;
+  /** Both endpoints are non-matches in the active search — fade out. */
+  isDimmed?: boolean;
 }
 
-export default function ErdEdge({ edge, highlighted }: ErdEdgeProps) {
+export default function ErdEdge({ edge, highlighted, isDimmed }: ErdEdgeProps) {
   if (edge.points.length < 2) return null;
 
   const d = pointsToPath(edge.points);
@@ -15,7 +18,10 @@ export default function ErdEdge({ edge, highlighted }: ErdEdgeProps) {
   const prev = edge.points[edge.points.length - 2];
 
   return (
-    <g style={{ pointerEvents: "none" }}>
+    <g
+      className={isDimmed ? styles.dim : ""}
+      style={{ pointerEvents: "none" }}
+    >
       <path d={d} fill="none" stroke={stroke} strokeWidth={strokeWidth} />
       {/* arrowhead at the child (target) end */}
       <polygon

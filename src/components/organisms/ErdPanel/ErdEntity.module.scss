@@ -1,0 +1,9 @@
+// Visual states applied to an entity's outer <g> during ERD search.
+// .dim renders unmatched entities translucent and slightly desaturated;
+// match-state outlines come from an inline stroke override on the rect.
+
+.dim {
+  opacity: 0.25;
+  filter: grayscale(0.6);
+  transition: opacity 120ms ease, filter 120ms ease;
+}

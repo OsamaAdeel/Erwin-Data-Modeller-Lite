@@ -1,5 +1,6 @@
 import type { ModelEntity } from "@/services/xml/model";
 import type { NodePosition } from "@/features/erd/layout";
+import styles from "./ErdEntity.module.scss";
 
 const HEADER_H = 32;
 const ROW_H = 18;
@@ -10,6 +11,10 @@ export interface ErdEntityProps {
   entity: ModelEntity;
   position: NodePosition;
   highlighted?: boolean;
+  /** Search-search match: outline the card in the primary colour. */
+  isMatched?: boolean;
+  /** Search non-match: render translucent + desaturated. */
+  isDimmed?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
 }
@@ -18,6 +23,8 @@ export default function ErdEntity({
   entity,
   position,
   highlighted,
+  isMatched,
+  isDimmed,
   onMouseEnter,
   onMouseLeave,
 }: ErdEntityProps) {
@@ -25,11 +32,18 @@ export default function ErdEntity({
   const visibleCols = entity.columns.slice(0, MAX_VISIBLE_COLS);
   const overflow = entity.columns.length - visibleCols.length;
 
+  // Hover-highlight wins visually over search-match (both use the primary
+  // colour but hover gets a thicker stroke to read like a focus state).
+  const showOutline = highlighted || isMatched;
+  const outlineWidth = highlighted ? 2 : isMatched ? 1.5 : 1;
+  const outlineColor = showOutline ? "var(--color-primary)" : "#CFD6E2";
+
   return (
     <g
       transform={`translate(${x}, ${y})`}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      className={isDimmed ? styles.dim : ""}
       style={{ cursor: "default" }}
     >
       {/* card body */}
@@ -41,8 +55,8 @@ export default function ErdEntity({
         rx={8}
         ry={8}
         fill="#FFFFFF"
-        stroke={highlighted ? "#2D6BFF" : "#CFD6E2"}
-        strokeWidth={highlighted ? 2 : 1}
+        stroke={outlineColor}
+        strokeWidth={outlineWidth}
       />
       {/* header */}
       <rect
