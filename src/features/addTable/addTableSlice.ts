@@ -29,6 +29,52 @@ import {
   setParsedDoc,
   setPreferredFolderHandle,
 } from "@/store/refs";
+import { NS } from "@/services/xml/namespaces";
+
+// --- Sample-model relationship helper ---------------------------------
+//
+// The emitter only knows about entities. To make the demo model render
+// with edges in the ERD tab, we synthesise minimal EMX:Relationship
+// nodes here. Looks up entity ids by `name` attribute (the emitter sets
+// it when adding) so we don't need addEntityDMv9 to return ids.
+
+function findEntityIdByName(doc: Document, name: string): string | null {
+  const entities = doc.getElementsByTagNameNS(NS.emx, "Entity");
+  for (const e of Array.from(entities)) {
+    if (e.getAttribute("name") === name) return e.getAttribute("id");
+  }
+  return null;
+}
+
+function addSampleRelationship(
+  doc: Document,
+  parentName: string,
+  childName: string,
+  relName: string
+): void {
+  const parentId = findEntityIdByName(doc, parentName);
+  const childId = findEntityIdByName(doc, childName);
+  if (!parentId || !childId) return;
+
+  const relId = `{${crypto.randomUUID().toUpperCase()}}+00000000`;
+  const rel = doc.createElementNS(NS.emx, "EMX:Relationship");
+  rel.setAttribute("id", relId);
+  rel.setAttribute("name", relName);
+
+  const props = doc.createElementNS(NS.emx, "EMX:RelationshipProps");
+  const txt = (tag: string, text: string) => {
+    const el = doc.createElementNS(NS.emx, "EMX:" + tag);
+    el.textContent = text;
+    return el;
+  };
+  props.appendChild(txt("Long_Id", relId));
+  props.appendChild(txt("Name", relName));
+  props.appendChild(txt("Parent_Entity_Ref", parentId));
+  props.appendChild(txt("Child_Entity_Ref", childId));
+  rel.appendChild(props);
+
+  doc.documentElement.appendChild(rel);
+}
 
 export interface SuccessInfo {
   tableName: string;       // last added; kept for single-table back-compat
@@ -343,6 +389,14 @@ export const loadSample = createAsyncThunk<void, void, ThunkConfig>(
         newCol("UNIT_PRICE", "NUMBER", "10", false, false),
         newCol("IN_STOCK", "CHAR", "1", false, false),
       ], tmpDomainMap);
+
+      // Wire two minimal Relationship elements so the ERD tab demos
+      // the dagre layout instead of three disconnected boxes. The
+      // relationships parser only reads parent/child entity refs and
+      // the OFSAA validator doesn't gate on relationship structure,
+      // so a stripped-down RelationshipProps is enough.
+      addSampleRelationship(tmpDoc, "CUSTOMERS", "SALES_ORDERS", "FK_ORDER_CUSTOMER");
+      addSampleRelationship(tmpDoc, "PRODUCTS", "SALES_ORDERS", "FK_ORDER_PRODUCT");
 
       const populated = serializeDoc(tmpDoc);
       const file = new File([populated], "sample-erwin.xml", {
