@@ -457,6 +457,53 @@ export const validateModel = createAsyncThunk<OfsaaValidationResult, void, Thunk
   }
 );
 
+/**
+ * Build the would-be output XML against a clone of the live doc. Like
+ * validateModel, this never touches the in-memory doc the user is
+ * working against — gives the user a chance to eyeball the XML and the
+ * proposed filename before the actual download is triggered.
+ */
+export interface PreviewInfo {
+  xml: string;
+  filename: string;
+  tablesAdded: number;
+}
+
+export const previewXml = createAsyncThunk<PreviewInfo, void, ThunkConfig>(
+  "addTable/previewXml",
+  async (_, { getState, rejectWithValue }) => {
+    const { parsed, stagedTables } = getState().addTable;
+    if (!parsed) return rejectWithValue("No XML loaded");
+    if (stagedTables.length === 0) return rejectWithValue("No tables to add");
+    const liveDoc = getParsedDoc(parsed.parseId);
+    if (!liveDoc) return rejectWithValue("Parsed document is no longer available");
+
+    const cloneXml = serializeDoc(liveDoc);
+    const cloneDoc = new DOMParser().parseFromString(cloneXml, "application/xml");
+
+    try {
+      for (const t of stagedTables) {
+        const trimmedCols = t.columns.map((c) => ({ ...c, name: c.name.trim() }));
+        const trimmedName = t.table_name.trim();
+        if (parsed.variant === "erwin-dm-v9") {
+          addEntityDMv9(cloneDoc, trimmedName, trimmedCols, parsed.domainMap);
+        } else {
+          addEntityClassic(cloneDoc, trimmedName, trimmedCols);
+        }
+      }
+    } catch (err) {
+      if (err instanceof EmitterError) return rejectWithValue(err.message);
+      throw err;
+    }
+
+    return {
+      xml: serializeDoc(cloneDoc),
+      filename: generateNextFileName(parsed.fileName),
+      tablesAdded: stagedTables.length,
+    };
+  }
+);
+
 export const generate = createAsyncThunk<SuccessInfo, void, ThunkConfig>(
   "addTable/generate",
   async (_, { getState, rejectWithValue }) => {

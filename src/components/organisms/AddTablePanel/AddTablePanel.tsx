@@ -11,6 +11,7 @@ import FileDrop from "@/components/molecules/FileDrop";
 import FolderPicker from "@/components/molecules/FolderPicker";
 import StatTile from "@/components/molecules/StatTile";
 import ValidationPanel from "@/components/molecules/ValidationPanel";
+import XmlPreviewModal from "@/components/molecules/XmlPreviewModal";
 import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
 import type { StagedTable } from "@/features/addTable/useAddTable";
@@ -37,6 +38,14 @@ export default function AddTablePanel() {
   const [ddlWarnings, setDdlWarnings] = useState<string[]>([]);
   // Filter for the staged-tables grid. Pure UI state.
   const [stagedSearch, setStagedSearch] = useState("");
+  // Output-XML preview modal state. `pending` while the clone+emit
+  // round-trip runs so the button can show a busy label.
+  const [previewState, setPreviewState] = useState<
+    | { kind: "closed" }
+    | { kind: "pending" }
+    | { kind: "open"; xml: string; filename: string; tablesAdded: number }
+    | { kind: "error"; message: string }
+  >({ kind: "closed" });
   const {
     parsed,
     loadError,
@@ -67,6 +76,7 @@ export default function AddTablePanel() {
     finalize,
     unfinalize,
     generate,
+    previewXml,
     validateModel,
     validationResult,
     validating,
@@ -115,6 +125,25 @@ export default function AddTablePanel() {
   function confirmFinalize() {
     setFinalizeConfirmOpen(false);
     finalize();
+  }
+
+  async function handlePreview() {
+    if (stagedTables.length === 0) return;
+    setPreviewState({ kind: "pending" });
+    try {
+      const info = await previewXml();
+      setPreviewState({ kind: "open", ...info });
+    } catch (err) {
+      setPreviewState({
+        kind: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  function handlePreviewDownload() {
+    setPreviewState({ kind: "closed" });
+    generate();
   }
 
   // ⌘/Ctrl+Enter from inside the panel commits the staged table. The
@@ -472,6 +501,14 @@ export default function AddTablePanel() {
               {validating ? "Validating…" : "Validate model"}
             </Button>
             <Button
+              variant="outline"
+              onClick={handlePreview}
+              disabled={previewState.kind === "pending" || stagedTables.length === 0}
+              title="See the would-be output XML before downloading — no file is written"
+            >
+              {previewState.kind === "pending" ? "Building…" : "Preview XML"}
+            </Button>
+            <Button
               size="lg"
               onClick={generate}
               disabled={!canGenerate}
@@ -535,6 +572,23 @@ export default function AddTablePanel() {
           setPendingDeleteId(null);
         }}
         onCancel={() => setPendingDeleteId(null)}
+      />
+      <XmlPreviewModal
+        open={previewState.kind === "open"}
+        xml={previewState.kind === "open" ? previewState.xml : ""}
+        filename={previewState.kind === "open" ? previewState.filename : ""}
+        tablesAdded={previewState.kind === "open" ? previewState.tablesAdded : 0}
+        onDownload={handlePreviewDownload}
+        onClose={() => setPreviewState({ kind: "closed" })}
+      />
+      <ConfirmModal
+        open={previewState.kind === "error"}
+        title="Couldn't build preview"
+        message={previewState.kind === "error" ? previewState.message : ""}
+        confirmLabel="OK"
+        cancelLabel="Close"
+        onConfirm={() => setPreviewState({ kind: "closed" })}
+        onCancel={() => setPreviewState({ kind: "closed" })}
       />
     </div>
   );

@@ -15,6 +15,7 @@ import {
   loadFile as loadFileThunk,
   loadSample as loadSampleThunk,
   pickFolder as pickFolderThunk,
+  previewXml as previewXmlThunk,
   refreshFolder as refreshFolderThunk,
   removeColumn as removeColumnAction,
   replaceColumns as replaceColumnsAction,
@@ -30,6 +31,7 @@ import {
 export type {
   FolderFileMeta,
   PreferredFolderState,
+  PreviewInfo,
   StagedTable,
   SuccessInfo,
 } from "./addTableSlice";
@@ -166,6 +168,14 @@ export function useAddTable() {
     void dispatch(generateThunk());
   }, [dispatch]);
 
+  // Returns the would-be output XML + filename without triggering a
+  // download. Used by the "Preview XML" modal so the user can eyeball
+  // the emit before committing to it.
+  const previewXml = useCallback(
+    () => dispatch(previewXmlThunk()).unwrap(),
+    [dispatch]
+  );
+
   const validateModel = useCallback(() => {
     void dispatch(validateModelThunk());
   }, [dispatch]);
@@ -235,6 +245,7 @@ export function useAddTable() {
     finalize,
     unfinalize,
     generate,
+    previewXml,
     validateModel,
     clearValidationResult,
     resetForm,
