@@ -490,6 +490,9 @@ const slice = createSlice({
       const [moved] = state.columns.splice(fromIdx, 1);
       const newToIdx = state.columns.findIndex((c) => c.id === toId);
       state.columns.splice(before ? newToIdx : newToIdx + 1, 0, moved);
+      // Reordering changes Physical_Order indices in the emit; previous
+      // validation pass no longer reflects what would be generated.
+      state.validationResult = null;
     },
     updateColumn(
       state,
@@ -505,6 +508,8 @@ const slice = createSlice({
         col.size = "";
         col.scale = "";
       }
+      // Any column edit invalidates a previous validation pass.
+      state.validationResult = null;
     },
     resetForm(state) {
       state.tableName = "";

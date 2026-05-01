@@ -28,6 +28,9 @@ export default function AddTablePanel() {
   const [showUploaders, setShowUploaders] = useState(true);
   // Confirm modal for the finalize action (replaces window.confirm).
   const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
+  // Confirm dialog for destructive staged-table deletion. Holds the id
+  // of the row we'd remove on confirm; null when the dialog is closed.
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   // "Paste DDL" mode swaps the column grid for a textarea + Parse button.
   const [ddlMode, setDdlMode] = useState(false);
   const [ddlText, setDdlText] = useState("");
@@ -380,7 +383,7 @@ export default function AddTablePanel() {
                     editLabel={t.sections.staged.editBtn}
                     deleteLabel={t.sections.staged.deleteBtn}
                     onEdit={() => editStagedTable(tbl.id)}
-                    onDelete={() => deleteStagedTable(tbl.id)}
+                    onDelete={() => setPendingDeleteId(tbl.id)}
                   />
                 ))}
               </ul>
@@ -473,6 +476,24 @@ export default function AddTablePanel() {
         cancelLabel="Cancel"
         onConfirm={confirmFinalize}
         onCancel={() => setFinalizeConfirmOpen(false)}
+      />
+      <ConfirmModal
+        open={pendingDeleteId !== null}
+        title="Remove this table from the queue?"
+        message={(() => {
+          const t = stagedTables.find((x) => x.id === pendingDeleteId);
+          return t
+            ? `"${t.table_name}" will be removed from the staged list. This can't be undone.`
+            : "";
+        })()}
+        confirmLabel="Remove"
+        cancelLabel="Keep"
+        destructive
+        onConfirm={() => {
+          if (pendingDeleteId) deleteStagedTable(pendingDeleteId);
+          setPendingDeleteId(null);
+        }}
+        onCancel={() => setPendingDeleteId(null)}
       />
     </div>
   );
