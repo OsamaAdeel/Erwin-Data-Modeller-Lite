@@ -6,6 +6,7 @@ import { formatFileSize } from "@/services/folder/folderScan";
 import type {
   FolderFileMeta,
   PreferredFolderState,
+  RecentFolderMeta,
 } from "@/features/addTable/useAddTable";
 import styles from "./FolderPicker.module.scss";
 
@@ -15,6 +16,10 @@ export interface FolderPickerProps {
   onRefresh: () => void;
   onSelectFile: (id: string) => void;
   onClear: () => void;
+  /** Re-open a folder previously persisted to IDB. */
+  onUseRecent?: (id: string) => void;
+  /** Drop a recent folder from IDB. */
+  onForgetRecent?: (id: string) => void;
   /** Optional override label for the empty/start state. */
   emptyHint?: string;
 }
@@ -25,9 +30,11 @@ export default function FolderPicker({
   onRefresh,
   onSelectFile,
   onClear,
+  onUseRecent,
+  onForgetRecent,
   emptyHint = "Pick a folder to auto-load the latest .xml file from it.",
 }: FolderPickerProps) {
-  const { name, files, selectedFileId, refreshable, loading, error } = state;
+  const { name, files, selectedFileId, refreshable, loading, error, recents } = state;
   const selected = useMemo(
     () => files.find((f) => f.id === selectedFileId) ?? null,
     [files, selectedFileId]
@@ -47,6 +54,14 @@ export default function FolderPicker({
             {loading ? "Opening…" : "Set preferred folder"}
           </Button>
         </div>
+        {recents.length > 0 && onUseRecent && (
+          <RecentFoldersList
+            recents={recents}
+            disabled={loading}
+            onUse={onUseRecent}
+            onForget={onForgetRecent}
+          />
+        )}
         {error && <div className={styles.error}>{error}</div>}
       </div>
     );
@@ -204,6 +219,62 @@ function FolderArtwork({ className }: { className?: string }) {
       <path d="M4 14 h48 l-3 22 h-42 z" fill="var(--color-primary-soft)" stroke="currentColor" />
     </svg>
   );
+}
+
+interface RecentFoldersListProps {
+  recents: RecentFolderMeta[];
+  disabled: boolean;
+  onUse: (id: string) => void;
+  onForget?: (id: string) => void;
+}
+
+function RecentFoldersList({ recents, disabled, onUse, onForget }: RecentFoldersListProps) {
+  return (
+    <div className={styles.recentsWrap}>
+      <div className={styles.recentsLabel}>Recent folders</div>
+      <ul className={styles.recentsList}>
+        {recents.map((r) => (
+          <li key={r.id} className={styles.recentRow}>
+            <button
+              type="button"
+              className={styles.recentName}
+              onClick={() => onUse(r.id)}
+              disabled={disabled}
+              title={`Re-open ${r.name} (you'll be asked to grant read permission)`}
+            >
+              <FolderGlyph className={styles.recentIcon} />
+              <span className={styles.recentNameText}>{r.name}</span>
+              <span className={styles.recentTime}>{formatRelative(r.lastUsedAt)}</span>
+            </button>
+            {onForget && (
+              <button
+                type="button"
+                className={styles.recentForget}
+                onClick={() => onForget(r.id)}
+                disabled={disabled}
+                aria-label={`Forget ${r.name}`}
+                title="Remove from recent list"
+              >
+                ×
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function formatRelative(ms: number): string {
+  const diff = Date.now() - ms;
+  const min = 60 * 1000;
+  const hr = 60 * min;
+  const day = 24 * hr;
+  if (diff < min) return "just now";
+  if (diff < hr) return `${Math.floor(diff / min)}m ago`;
+  if (diff < day) return `${Math.floor(diff / hr)}h ago`;
+  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
+  return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function formatTimestamp(ms: number): string {

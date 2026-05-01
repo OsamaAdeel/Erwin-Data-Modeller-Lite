@@ -86,7 +86,17 @@ export default function AddTablePanel() {
     refreshFolder,
     selectFolderFile,
     clearFolder,
+    hydrateRecentFolders,
+    useRecentFolder,
+    forgetRecentFolder,
   } = useAddTable();
+
+  // Pull the IDB recent-folders list on mount so the empty-state can
+  // render it. Cheap — at most one IDB read; safe to fire on every
+  // mount.
+  useEffect(() => {
+    hydrateRecentFolders();
+  }, [hydrateRecentFolders]);
 
   // Auto-collapse Step 1 the first time a file lands. Re-fires on every
   // new parseId so loading a different file collapses again.
@@ -186,6 +196,8 @@ export default function AddTablePanel() {
               onRefresh={refreshFolder}
               onSelectFile={selectFolderFile}
               onClear={clearFolder}
+              onUseRecent={useRecentFolder}
+              onForgetRecent={forgetRecentFolder}
             />
             <div className={styles.uploadSeparator} aria-hidden>or upload a single file</div>
             <FileDrop
