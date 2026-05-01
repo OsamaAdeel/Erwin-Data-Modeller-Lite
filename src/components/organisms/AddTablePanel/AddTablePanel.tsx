@@ -35,6 +35,8 @@ export default function AddTablePanel() {
   const [ddlMode, setDdlMode] = useState(false);
   const [ddlText, setDdlText] = useState("");
   const [ddlWarnings, setDdlWarnings] = useState<string[]>([]);
+  // Filter for the staged-tables grid. Pure UI state.
+  const [stagedSearch, setStagedSearch] = useState("");
   const {
     parsed,
     loadError,
@@ -369,24 +371,63 @@ export default function AddTablePanel() {
             <div className={styles.stagedEmpty}>{t.sections.staged.empty}</div>
           ) : (
             <>
-              <div className={styles.stagedCount}>
-                {t.sections.staged.countLabel.replace("{n}", String(stagedTables.length))}
-              </div>
-              <ul className={styles.stagedList}>
-                {stagedTables.map((tbl) => (
-                  <StagedTableItem
-                    key={tbl.id}
-                    table={tbl}
-                    disabled={isFinalized}
-                    isEditing={editingId === tbl.id}
-                    columnCountSuffix={t.sections.staged.columnCountSuffix}
-                    editLabel={t.sections.staged.editBtn}
-                    deleteLabel={t.sections.staged.deleteBtn}
-                    onEdit={() => editStagedTable(tbl.id)}
-                    onDelete={() => setPendingDeleteId(tbl.id)}
+              <div className={styles.stagedHead}>
+                <div className={styles.stagedCount}>
+                  {t.sections.staged.countLabel.replace("{n}", String(stagedTables.length))}
+                </div>
+                {stagedTables.length > 3 && (
+                  <Input
+                    className={styles.stagedSearch}
+                    type="search"
+                    placeholder="Filter staged tables…"
+                    value={stagedSearch}
+                    onChange={(e) => setStagedSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape" && stagedSearch) {
+                        e.preventDefault();
+                        setStagedSearch("");
+                      }
+                    }}
+                    spellCheck={false}
+                    autoComplete="off"
+                    aria-label="Filter staged tables"
                   />
-                ))}
-              </ul>
+                )}
+              </div>
+              {(() => {
+                const q = stagedSearch.trim().toLowerCase();
+                const visible = q
+                  ? stagedTables.filter(
+                      (t) =>
+                        t.table_name.toLowerCase().includes(q) ||
+                        t.description.toLowerCase().includes(q)
+                    )
+                  : stagedTables;
+                if (q && visible.length === 0) {
+                  return (
+                    <div className={styles.stagedEmpty}>
+                      No staged tables match &ldquo;{stagedSearch}&rdquo;.
+                    </div>
+                  );
+                }
+                return (
+                  <ul className={styles.stagedList}>
+                    {visible.map((tbl) => (
+                      <StagedTableItem
+                        key={tbl.id}
+                        table={tbl}
+                        disabled={isFinalized}
+                        isEditing={editingId === tbl.id}
+                        columnCountSuffix={t.sections.staged.columnCountSuffix}
+                        editLabel={t.sections.staged.editBtn}
+                        deleteLabel={t.sections.staged.deleteBtn}
+                        onEdit={() => editStagedTable(tbl.id)}
+                        onDelete={() => setPendingDeleteId(tbl.id)}
+                      />
+                    ))}
+                  </ul>
+                );
+              })()}
             </>
           )}
         </Card>
