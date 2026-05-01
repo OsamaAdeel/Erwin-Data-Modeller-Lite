@@ -162,6 +162,7 @@ export default function ErdPanel() {
               contentWidth={erd.data.layout.width}
               contentHeight={erd.data.layout.height}
               minimapEntities={Array.from(erd.data.layout.nodes.values())}
+              minimapMatchedIds={isSearching ? matchedIds : undefined}
             >
               {/* draw edges first so they sit behind entity cards */}
               {erd.data.layout.edges.map((e) => {

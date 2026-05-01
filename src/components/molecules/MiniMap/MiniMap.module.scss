@@ -26,6 +26,14 @@
   stroke: var(--color-text-muted);
   stroke-opacity: 0.25;
   stroke-width: 0.5;
+  transition: fill-opacity 120ms ease;
+}
+
+// Non-matches when the main view is filtered: pull both fill and stroke
+// down so the matched silhouette pops on the minimap too.
+.entityDim {
+  fill-opacity: 0.12;
+  stroke-opacity: 0.1;
 }
 
 // The visible-area rectangle sits on top of the entities. Filled with a

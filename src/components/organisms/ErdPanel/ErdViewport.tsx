@@ -19,6 +19,11 @@ export interface ErdViewportProps {
    * minimap toggle is not rendered.
    */
   minimapEntities?: NodePosition[];
+  /**
+   * Pass-through to the minimap so it can dim non-matching entities in
+   * sync with the main view's search filter.
+   */
+  minimapMatchedIds?: Set<string>;
   children: ReactNode;
 }
 
@@ -56,6 +61,7 @@ export default function ErdViewport({
   contentWidth,
   contentHeight,
   minimapEntities,
+  minimapMatchedIds,
   children,
 }: ErdViewportProps) {
   const [zoom, setZoom] = useState(1);
@@ -202,6 +208,7 @@ export default function ErdViewport({
             ty={ty}
             zoom={zoom}
             onPan={handleMinimapPan}
+            matchedIds={minimapMatchedIds}
           />
         </div>
       )}
