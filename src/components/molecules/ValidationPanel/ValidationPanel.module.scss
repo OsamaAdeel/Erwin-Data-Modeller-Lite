@@ -1,0 +1,85 @@
+// Theme-aware "validator ran" banner / details panel.
+// ok=true → green soft banner; ok=false → red soft <details> with
+// per-rule subsections.
+
+.ok {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3;
+  background: $green-soft;
+  border: 1px solid rgba(var(--color-green-rgb), 0.3);
+  border-radius: $radius-sm;
+  color: $green;
+  font-size: $fs-sm;
+}
+
+.fail {
+  border: 1px solid rgba(var(--color-red-rgb), 0.35);
+  background: $red-bg;
+  border-radius: $radius-sm;
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-3;
+    cursor: pointer;
+    color: $red;
+    font-weight: 500;
+  }
+}
+
+.body {
+  padding: 0 $space-3 $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.group {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+}
+
+.rule {
+  margin: 0 0 $space-2;
+  font-size: $fs-sm;
+  font-weight: 600;
+  color: $text;
+  letter-spacing: 0.04em;
+}
+
+.count {
+  color: $text-muted;
+  font-weight: 400;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: $fs-sm;
+  color: $text;
+  padding: $space-1 0;
+  border-top: 1px solid $border;
+
+  &:first-child { border-top: none; }
+}
+
+.context {
+  font-family: $font-mono;
+  font-size: $fs-xs;
+  color: $text-muted;
+}

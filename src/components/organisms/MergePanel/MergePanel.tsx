@@ -5,6 +5,7 @@ import Card from "@/components/atoms/Card";
 import Badge from "@/components/atoms/Badge";
 import FileDrop from "@/components/molecules/FileDrop";
 import StatTile from "@/components/molecules/StatTile";
+import ValidationPanel from "@/components/molecules/ValidationPanel";
 import { useMerge } from "@/features/merge/useMerge";
 import type { Conflict } from "@/services/xml/merge/types";
 import styles from "./MergePanel.module.scss";
@@ -318,8 +319,23 @@ export default function MergePanel() {
           <div className={styles.actionsRow}>
             <Button onClick={m.downloadXml}>{t.result.downloadXml}</Button>
             <Button variant="outline" onClick={m.downloadReport}>{t.result.downloadReport}</Button>
+            <Button
+              variant="outline"
+              onClick={m.validateMerge}
+              disabled={m.validating}
+              title="Run the OFSAA validator on the merged XML — no download"
+            >
+              {m.validating ? "Validating…" : "Validate output"}
+            </Button>
             <Button variant="ghost" onClick={m.reset}>{t.result.another}</Button>
           </div>
+          {m.validationResult && (
+            <ValidationPanel
+              result={m.validationResult}
+              successMessage="OFSAA validator: 0 violations — merged XML is OFSAA-compliant."
+              className={styles.validationWrap}
+            />
+          )}
           <details className={styles.log}>
             <summary>Actions &amp; warnings</summary>
             <pre>{m.result.reportText}</pre>

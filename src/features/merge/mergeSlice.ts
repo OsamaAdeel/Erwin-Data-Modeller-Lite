@@ -9,6 +9,7 @@ import {
   MergeExecuteError,
 } from "@/services/xml/merge/execute";
 import type { MergePlan, MergeReport } from "@/services/xml/merge/types";
+import { validateOfsaaXml, type OfsaaValidationResult } from "@/services/xml/validator";
 import { downloadBlob } from "@/utils/download";
 
 export type Slot = "source" | "target";
@@ -45,6 +46,9 @@ export interface MergeState {
   plan: MergePlan | null;
   rows: PickerRow[];
   result: MergeResult | null;
+  // OFSAA validator dry-run on the merge result XML.
+  validationResult: OfsaaValidationResult | null;
+  validating: boolean;
 }
 
 const initialState: MergeState = {
@@ -55,6 +59,8 @@ const initialState: MergeState = {
   plan: null,
   rows: [],
   result: null,
+  validationResult: null,
+  validating: false,
 };
 
 function rowId(row: RowKey): string {
@@ -96,6 +102,21 @@ export const loadSlot = createAsyncThunk<
           : String(err);
     return rejectWithValue({ slot, message });
   }
+});
+
+/**
+ * Run the OFSAA validator on the merge result XML. The result.report.xml
+ * is already serialized OFSAA-compliant output, so we just hand it to
+ * validateOfsaaXml. Surfaced as a panel below the result actions.
+ */
+export const validateMerge = createAsyncThunk<
+  OfsaaValidationResult,
+  void,
+  { state: { merge: MergeState }; rejectValue: string }
+>("merge/validateMerge", async (_, { getState, rejectWithValue }) => {
+  const { result } = getState().merge;
+  if (!result) return rejectWithValue("No merge result to validate.");
+  return validateOfsaaXml(result.report.xml);
 });
 
 const slice = createSlice({
@@ -153,6 +174,8 @@ const slice = createSlice({
       const { source, target, plan, rows } = state;
       if (!source || !target || !plan) return;
       state.errors.general = undefined;
+      // A fresh execute produces new XML — any prior validation no longer applies.
+      state.validationResult = null;
       const stagedTables = rows
         .filter((r) => r.side === "staged" && r.kind === "table")
         .map((r) => r.tableUpper);
@@ -217,6 +240,18 @@ const slice = createSlice({
         state.errors[slot] = message;
         if (slot === "source") state.source = null;
         else state.target = null;
+      })
+      // --- Validate merge result ---------------------------------------
+      .addCase(validateMerge.pending, (state) => {
+        state.validating = true;
+      })
+      .addCase(validateMerge.fulfilled, (state, action) => {
+        state.validating = false;
+        state.validationResult = action.payload;
+      })
+      .addCase(validateMerge.rejected, (state, action) => {
+        state.validating = false;
+        state.errors.general = action.payload ?? action.error.message;
       });
   },
 });

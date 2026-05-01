@@ -10,12 +10,12 @@ import ConfirmModal from "@/components/molecules/ConfirmModal";
 import FileDrop from "@/components/molecules/FileDrop";
 import FolderPicker from "@/components/molecules/FolderPicker";
 import StatTile from "@/components/molecules/StatTile";
+import ValidationPanel from "@/components/molecules/ValidationPanel";
 import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
 import type { StagedTable } from "@/features/addTable/useAddTable";
 import { generateNextFileName } from "@/services/xml/serialize";
 import { parseOracleDdl } from "@/services/ddl/ddlParser";
-import type { OfsaaValidationResult, Violation } from "@/services/xml/validator";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
 
@@ -442,7 +442,7 @@ export default function AddTablePanel() {
           </div>
 
           {validationResult && (
-            <ValidationPanel result={validationResult} />
+            <ValidationPanel result={validationResult} className={styles.validationWrap} />
           )}
 
           {canGenerate && nextFileName && (
@@ -619,62 +619,8 @@ function DdlPasteArea({
   );
 }
 
-// Inline panel summarising the OFSAA validator's last run. Renders as a
-// banner ("Looks good — N rules checked") on success or a grouped
-// violations list inside a <details> on failure.
-function ValidationPanel({ result }: { result: OfsaaValidationResult }) {
-  const grouped = useMemo(() => {
-    const out = new Map<string, Violation[]>();
-    for (const v of result.violations) {
-      const key = v.rule;
-      const list = out.get(key);
-      if (list) list.push(v);
-      else out.set(key, [v]);
-    }
-    return Array.from(out.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [result]);
-
-  if (result.ok) {
-    return (
-      <div className={styles.validationOk} role="status">
-        <Badge tone="success">✓</Badge>
-        <span>OFSAA validator: 0 violations — model is ready to generate.</span>
-      </div>
-    );
-  }
-
-  return (
-    <details className={styles.validationFail} open>
-      <summary>
-        <Badge tone="danger">!</Badge>
-        <span>
-          OFSAA validator: {result.violations.length} violation{result.violations.length === 1 ? "" : "s"}
-        </span>
-      </summary>
-      <div className={styles.validationBody}>
-        {grouped.map(([rule, items]) => (
-          <section key={rule} className={styles.validationGroup}>
-            <h4 className={styles.validationRule}>
-              {rule} <span className={styles.validationCount}>· {items.length}</span>
-            </h4>
-            <ul className={styles.validationList}>
-              {items.map((v, i) => (
-                <li key={i} className={styles.validationItem}>
-                  {(v.entity || v.column || v.field) && (
-                    <span className={styles.validationContext}>
-                      {[v.entity, v.column, v.field].filter(Boolean).join(" · ")}
-                    </span>
-                  )}
-                  <span>{v.message}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-    </details>
-  );
-}
+// (ValidationPanel was lifted to molecules/ValidationPanel for reuse
+// by MergePanel's "Validate" button.)
 
 function FileGlyph({ className }: { className?: string }) {
   return (
