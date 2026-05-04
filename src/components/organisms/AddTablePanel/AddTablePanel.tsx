@@ -10,12 +10,13 @@ import ConfirmModal from "@/components/molecules/ConfirmModal";
 import FileDrop from "@/components/molecules/FileDrop";
 import FolderPicker from "@/components/molecules/FolderPicker";
 import StatTile from "@/components/molecules/StatTile";
+import ValidationPanel from "@/components/molecules/ValidationPanel";
+import XmlPreviewModal from "@/components/molecules/XmlPreviewModal";
 import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
 import type { StagedTable } from "@/features/addTable/useAddTable";
 import { generateNextFileName } from "@/services/xml/serialize";
 import { parseOracleDdl } from "@/services/ddl/ddlParser";
-import type { OfsaaValidationResult, Violation } from "@/services/xml/validator";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
 
@@ -28,10 +29,23 @@ export default function AddTablePanel() {
   const [showUploaders, setShowUploaders] = useState(true);
   // Confirm modal for the finalize action (replaces window.confirm).
   const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
+  // Confirm dialog for destructive staged-table deletion. Holds the id
+  // of the row we'd remove on confirm; null when the dialog is closed.
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   // "Paste DDL" mode swaps the column grid for a textarea + Parse button.
   const [ddlMode, setDdlMode] = useState(false);
   const [ddlText, setDdlText] = useState("");
   const [ddlWarnings, setDdlWarnings] = useState<string[]>([]);
+  // Filter for the staged-tables grid. Pure UI state.
+  const [stagedSearch, setStagedSearch] = useState("");
+  // Output-XML preview modal state. `pending` while the clone+emit
+  // round-trip runs so the button can show a busy label.
+  const [previewState, setPreviewState] = useState<
+    | { kind: "closed" }
+    | { kind: "pending" }
+    | { kind: "open"; xml: string; filename: string; tablesAdded: number }
+    | { kind: "error"; message: string }
+  >({ kind: "closed" });
   const {
     parsed,
     loadError,
@@ -62,6 +76,7 @@ export default function AddTablePanel() {
     finalize,
     unfinalize,
     generate,
+    previewXml,
     validateModel,
     validationResult,
     validating,
@@ -71,7 +86,17 @@ export default function AddTablePanel() {
     refreshFolder,
     selectFolderFile,
     clearFolder,
+    hydrateRecentFolders,
+    useRecentFolder,
+    forgetRecentFolder,
   } = useAddTable();
+
+  // Pull the IDB recent-folders list on mount so the empty-state can
+  // render it. Cheap — at most one IDB read; safe to fire on every
+  // mount.
+  useEffect(() => {
+    hydrateRecentFolders();
+  }, [hydrateRecentFolders]);
 
   // Auto-collapse Step 1 the first time a file lands. Re-fires on every
   // new parseId so loading a different file collapses again.
@@ -110,6 +135,25 @@ export default function AddTablePanel() {
   function confirmFinalize() {
     setFinalizeConfirmOpen(false);
     finalize();
+  }
+
+  async function handlePreview() {
+    if (stagedTables.length === 0) return;
+    setPreviewState({ kind: "pending" });
+    try {
+      const info = await previewXml();
+      setPreviewState({ kind: "open", ...info });
+    } catch (err) {
+      setPreviewState({
+        kind: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  function handlePreviewDownload() {
+    setPreviewState({ kind: "closed" });
+    generate();
   }
 
   // ⌘/Ctrl+Enter from inside the panel commits the staged table. The
@@ -152,6 +196,8 @@ export default function AddTablePanel() {
               onRefresh={refreshFolder}
               onSelectFile={selectFolderFile}
               onClear={clearFolder}
+              onUseRecent={useRecentFolder}
+              onForgetRecent={forgetRecentFolder}
             />
             <div className={styles.uploadSeparator} aria-hidden>or upload a single file</div>
             <FileDrop
@@ -366,24 +412,63 @@ export default function AddTablePanel() {
             <div className={styles.stagedEmpty}>{t.sections.staged.empty}</div>
           ) : (
             <>
-              <div className={styles.stagedCount}>
-                {t.sections.staged.countLabel.replace("{n}", String(stagedTables.length))}
-              </div>
-              <ul className={styles.stagedList}>
-                {stagedTables.map((tbl) => (
-                  <StagedTableItem
-                    key={tbl.id}
-                    table={tbl}
-                    disabled={isFinalized}
-                    isEditing={editingId === tbl.id}
-                    columnCountSuffix={t.sections.staged.columnCountSuffix}
-                    editLabel={t.sections.staged.editBtn}
-                    deleteLabel={t.sections.staged.deleteBtn}
-                    onEdit={() => editStagedTable(tbl.id)}
-                    onDelete={() => deleteStagedTable(tbl.id)}
+              <div className={styles.stagedHead}>
+                <div className={styles.stagedCount}>
+                  {t.sections.staged.countLabel.replace("{n}", String(stagedTables.length))}
+                </div>
+                {stagedTables.length > 3 && (
+                  <Input
+                    className={styles.stagedSearch}
+                    type="search"
+                    placeholder="Filter staged tables…"
+                    value={stagedSearch}
+                    onChange={(e) => setStagedSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape" && stagedSearch) {
+                        e.preventDefault();
+                        setStagedSearch("");
+                      }
+                    }}
+                    spellCheck={false}
+                    autoComplete="off"
+                    aria-label="Filter staged tables"
                   />
-                ))}
-              </ul>
+                )}
+              </div>
+              {(() => {
+                const q = stagedSearch.trim().toLowerCase();
+                const visible = q
+                  ? stagedTables.filter(
+                      (t) =>
+                        t.table_name.toLowerCase().includes(q) ||
+                        t.description.toLowerCase().includes(q)
+                    )
+                  : stagedTables;
+                if (q && visible.length === 0) {
+                  return (
+                    <div className={styles.stagedEmpty}>
+                      No staged tables match &ldquo;{stagedSearch}&rdquo;.
+                    </div>
+                  );
+                }
+                return (
+                  <ul className={styles.stagedList}>
+                    {visible.map((tbl) => (
+                      <StagedTableItem
+                        key={tbl.id}
+                        table={tbl}
+                        disabled={isFinalized}
+                        isEditing={editingId === tbl.id}
+                        columnCountSuffix={t.sections.staged.columnCountSuffix}
+                        editLabel={t.sections.staged.editBtn}
+                        deleteLabel={t.sections.staged.deleteBtn}
+                        onEdit={() => editStagedTable(tbl.id)}
+                        onDelete={() => setPendingDeleteId(tbl.id)}
+                      />
+                    ))}
+                  </ul>
+                );
+              })()}
             </>
           )}
         </Card>
@@ -428,6 +513,14 @@ export default function AddTablePanel() {
               {validating ? "Validating…" : "Validate model"}
             </Button>
             <Button
+              variant="outline"
+              onClick={handlePreview}
+              disabled={previewState.kind === "pending" || stagedTables.length === 0}
+              title="See the would-be output XML before downloading — no file is written"
+            >
+              {previewState.kind === "pending" ? "Building…" : "Preview XML"}
+            </Button>
+            <Button
               size="lg"
               onClick={generate}
               disabled={!canGenerate}
@@ -439,7 +532,7 @@ export default function AddTablePanel() {
           </div>
 
           {validationResult && (
-            <ValidationPanel result={validationResult} />
+            <ValidationPanel result={validationResult} className={styles.validationWrap} />
           )}
 
           {canGenerate && nextFileName && (
@@ -473,6 +566,41 @@ export default function AddTablePanel() {
         cancelLabel="Cancel"
         onConfirm={confirmFinalize}
         onCancel={() => setFinalizeConfirmOpen(false)}
+      />
+      <ConfirmModal
+        open={pendingDeleteId !== null}
+        title="Remove this table from the queue?"
+        message={(() => {
+          const t = stagedTables.find((x) => x.id === pendingDeleteId);
+          return t
+            ? `"${t.table_name}" will be removed from the staged list. This can't be undone.`
+            : "";
+        })()}
+        confirmLabel="Remove"
+        cancelLabel="Keep"
+        destructive
+        onConfirm={() => {
+          if (pendingDeleteId) deleteStagedTable(pendingDeleteId);
+          setPendingDeleteId(null);
+        }}
+        onCancel={() => setPendingDeleteId(null)}
+      />
+      <XmlPreviewModal
+        open={previewState.kind === "open"}
+        xml={previewState.kind === "open" ? previewState.xml : ""}
+        filename={previewState.kind === "open" ? previewState.filename : ""}
+        tablesAdded={previewState.kind === "open" ? previewState.tablesAdded : 0}
+        onDownload={handlePreviewDownload}
+        onClose={() => setPreviewState({ kind: "closed" })}
+      />
+      <ConfirmModal
+        open={previewState.kind === "error"}
+        title="Couldn't build preview"
+        message={previewState.kind === "error" ? previewState.message : ""}
+        confirmLabel="OK"
+        cancelLabel="Close"
+        onConfirm={() => setPreviewState({ kind: "closed" })}
+        onCancel={() => setPreviewState({ kind: "closed" })}
       />
     </div>
   );
@@ -598,62 +726,8 @@ function DdlPasteArea({
   );
 }
 
-// Inline panel summarising the OFSAA validator's last run. Renders as a
-// banner ("Looks good — N rules checked") on success or a grouped
-// violations list inside a <details> on failure.
-function ValidationPanel({ result }: { result: OfsaaValidationResult }) {
-  const grouped = useMemo(() => {
-    const out = new Map<string, Violation[]>();
-    for (const v of result.violations) {
-      const key = v.rule;
-      const list = out.get(key);
-      if (list) list.push(v);
-      else out.set(key, [v]);
-    }
-    return Array.from(out.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [result]);
-
-  if (result.ok) {
-    return (
-      <div className={styles.validationOk} role="status">
-        <Badge tone="success">✓</Badge>
-        <span>OFSAA validator: 0 violations — model is ready to generate.</span>
-      </div>
-    );
-  }
-
-  return (
-    <details className={styles.validationFail} open>
-      <summary>
-        <Badge tone="danger">!</Badge>
-        <span>
-          OFSAA validator: {result.violations.length} violation{result.violations.length === 1 ? "" : "s"}
-        </span>
-      </summary>
-      <div className={styles.validationBody}>
-        {grouped.map(([rule, items]) => (
-          <section key={rule} className={styles.validationGroup}>
-            <h4 className={styles.validationRule}>
-              {rule} <span className={styles.validationCount}>· {items.length}</span>
-            </h4>
-            <ul className={styles.validationList}>
-              {items.map((v, i) => (
-                <li key={i} className={styles.validationItem}>
-                  {(v.entity || v.column || v.field) && (
-                    <span className={styles.validationContext}>
-                      {[v.entity, v.column, v.field].filter(Boolean).join(" · ")}
-                    </span>
-                  )}
-                  <span>{v.message}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-    </details>
-  );
-}
+// (ValidationPanel was lifted to molecules/ValidationPanel for reuse
+// by MergePanel's "Validate" button.)
 
 function FileGlyph({ className }: { className?: string }) {
   return (

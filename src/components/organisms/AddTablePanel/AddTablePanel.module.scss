@@ -296,10 +296,22 @@
   text-align: center;
 }
 
+.stagedHead {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  margin-bottom: $space-2;
+}
+
 .stagedCount {
   font-size: $fs-sm;
   color: $text-muted;
-  margin-bottom: $space-2;
+  flex-shrink: 0;
+}
+
+.stagedSearch {
+  flex: 1;
+  max-width: 320px;
 }
 
 .stagedList {
@@ -438,90 +450,8 @@
   margin-top: $space-3;
 }
 
-// OFSAA validator panels — green for clean, red for violations.
-.validationOk {
-  display: flex;
-  align-items: center;
-  gap: $space-2;
-  padding: $space-3;
-  background: $green-soft;
-  border: 1px solid rgba(var(--color-green-rgb), 0.3);
-  border-radius: $radius-sm;
-  color: $green;
-  margin-top: $space-3;
-  font-size: $fs-sm;
-}
-
-.validationFail {
-  margin-top: $space-3;
-  border: 1px solid rgba(var(--color-red-rgb), 0.35);
-  background: $red-bg;
-  border-radius: $radius-sm;
-
-  summary {
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-3;
-    cursor: pointer;
-    color: $red;
-    font-weight: 500;
-  }
-}
-
-.validationBody {
-  padding: 0 $space-3 $space-3;
-  display: flex;
-  flex-direction: column;
-  gap: $space-3;
-}
-
-.validationGroup {
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius-sm;
-  padding: $space-2 $space-3;
-}
-
-.validationRule {
-  margin: 0 0 $space-2;
-  font-size: $fs-sm;
-  font-weight: 600;
-  color: $text;
-  letter-spacing: 0.04em;
-}
-
-.validationCount {
-  color: $text-muted;
-  font-weight: 400;
-}
-
-.validationList {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: $space-1;
-  list-style: none;
-}
-
-.validationItem {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: $fs-sm;
-  color: $text;
-  padding: $space-1 0;
-  border-top: 1px solid $border;
-
-  &:first-child { border-top: none; }
-}
-
-.validationContext {
-  font-family: $font-mono;
-  font-size: $fs-xs;
-  color: $text-muted;
-}
+// (Validator panel styles moved to molecules/ValidationPanel.)
+.validationWrap { margin-top: $space-3; }
 
 .successText { flex: 1; min-width: 0; }
 

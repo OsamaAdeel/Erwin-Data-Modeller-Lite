@@ -17,6 +17,8 @@ export interface ErdEntityProps {
   isDimmed?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  /** Click or Enter on the card opens the inspector for this entity. */
+  onActivate?: () => void;
 }
 
 export default function ErdEntity({
@@ -27,6 +29,7 @@ export default function ErdEntity({
   isDimmed,
   onMouseEnter,
   onMouseLeave,
+  onActivate,
 }: ErdEntityProps) {
   const { x, y, width, height } = position;
   const visibleCols = entity.columns.slice(0, MAX_VISIBLE_COLS);
@@ -48,10 +51,18 @@ export default function ErdEntity({
       onMouseLeave={onMouseLeave}
       onFocus={onMouseEnter}
       onBlur={onMouseLeave}
+      onClick={onActivate}
+      onKeyDown={(e) => {
+        if (!onActivate) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onActivate();
+        }
+      }}
       role="group"
       aria-label={`Entity ${entity.name} with ${entity.columns.length} column${entity.columns.length === 1 ? "" : "s"}`}
-      className={`${styles.entityGroup} ${isDimmed ? styles.dim : ""}`}
-      style={{ cursor: "default" }}
+      className={`${styles.entityGroup} ${isDimmed ? styles.dim : ""} ${onActivate ? styles.entityClickable : ""}`}
+      style={{ cursor: onActivate ? "pointer" : "default" }}
     >
       {/* card body */}
       <rect

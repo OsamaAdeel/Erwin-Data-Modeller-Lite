@@ -26,6 +26,12 @@ export interface MiniMapProps {
   zoom: number;
   /** Set the main viewport's pan to (tx, ty). */
   onPan: (tx: number, ty: number) => void;
+  /**
+   * When set (and non-empty), entities NOT in this set render at lower
+   * opacity in the minimap — same dim semantics as the main view's
+   * search-filter, so the two stay visually in sync.
+   */
+  matchedIds?: Set<string>;
   className?: string;
 }
 
@@ -43,8 +49,10 @@ export default function MiniMap({
   ty,
   zoom,
   onPan,
+  matchedIds,
   className,
 }: MiniMapProps) {
+  const dimming = !!matchedIds && matchedIds.size > 0;
   const svgRef = useRef<SVGSVGElement | null>(null);
   // Drag bookkeeping for the viewport rectangle. Captured pointer means
   // every move comes back to us until pointerup, regardless of where the
@@ -125,16 +133,19 @@ export default function MiniMap({
         onPointerDown={handleSvgPointerDown}
       >
         <rect x={0} y={0} width={MM_WIDTH} height={MM_HEIGHT} className={styles.bg} />
-        {entities.map((ent) => (
-          <rect
-            key={ent.id}
-            x={offsetX + ent.x * scale}
-            y={offsetY + ent.y * scale}
-            width={Math.max(1, ent.width * scale)}
-            height={Math.max(1, ent.height * scale)}
-            className={styles.entity}
-          />
-        ))}
+        {entities.map((ent) => {
+          const isDim = dimming && !matchedIds!.has(ent.id);
+          return (
+            <rect
+              key={ent.id}
+              x={offsetX + ent.x * scale}
+              y={offsetY + ent.y * scale}
+              width={Math.max(1, ent.width * scale)}
+              height={Math.max(1, ent.height * scale)}
+              className={`${styles.entity} ${isDim ? styles.entityDim : ""}`}
+            />
+          );
+        })}
         <rect
           x={vRect.x}
           y={vRect.y}

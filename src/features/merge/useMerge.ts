@@ -9,6 +9,7 @@ import {
   moveAll as moveAllAction,
   moveRow as moveRowAction,
   reset as resetAction,
+  validateMerge as validateMergeThunk,
   type Slot,
 } from "./mergeSlice";
 export type { PickerRow, Slot, SlotState, MergeResult } from "./mergeSlice";
@@ -22,6 +23,8 @@ export function useMerge() {
   const plan = useAppSelector((s) => s.merge.plan);
   const rows = useAppSelector((s) => s.merge.rows);
   const result = useAppSelector((s) => s.merge.result);
+  const validationResult = useAppSelector((s) => s.merge.validationResult);
+  const validating = useAppSelector((s) => s.merge.validating);
 
   const counts = useMemo(() => {
     const pending = rows.filter((r) => r.side === "pending");
@@ -71,6 +74,10 @@ export function useMerge() {
     dispatch(resetAction());
   }, [dispatch]);
 
+  const validateMerge = useCallback(() => {
+    void dispatch(validateMergeThunk());
+  }, [dispatch]);
+
   const downloadXml = useCallback(() => {
     if (result) downloadMergeXml(result);
   }, [result]);
@@ -81,7 +88,8 @@ export function useMerge() {
 
   return {
     source, target, errors, loading, plan, rows, counts, result,
-    loadSlot, compute, moveRow, moveAll, execute, reset,
+    validationResult, validating,
+    loadSlot, compute, moveRow, moveAll, execute, reset, validateMerge,
     downloadXml, downloadReport,
     canCompute: !!source && !!target,
     canExecute: !!plan && rows.some((r) => r.side === "staged"),

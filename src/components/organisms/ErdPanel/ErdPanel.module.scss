@@ -86,3 +86,148 @@
   flex-wrap: wrap;
   margin-top: $space-2;
 }
+
+// Entity inspector — sits below the ERD viewport when the user clicks an
+// entity card. Shows the *full* column list (the card itself caps at 14).
+.inspector {
+  margin-top: $space-3;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  background: $surface-alt;
+  padding: $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.inspectorHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+}
+
+.inspectorTitleWrap {
+  display: flex;
+  align-items: baseline;
+  gap: $space-2;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.inspectorEyebrow {
+  font-size: $fs-xs;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: $text-muted;
+  font-weight: 600;
+}
+
+.inspectorTitle {
+  font-family: $font-mono;
+  font-weight: 600;
+  font-size: $fs-md;
+  color: $text;
+}
+
+.inspectorCount {
+  font-size: $fs-sm;
+  color: $text-muted;
+}
+
+.inspectorClose {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  color: $text-muted;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover { background: $surface; color: $text; }
+}
+
+.inspectorEmpty {
+  margin: 0;
+  font-style: italic;
+  color: $text-muted;
+  font-size: $fs-sm;
+}
+
+.inspectorList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: $border;
+  border-radius: $radius-sm;
+  overflow: hidden;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.inspectorRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr auto;
+  gap: $space-3;
+  align-items: center;
+  padding: $space-2 $space-3;
+  background: $surface;
+  font-size: $fs-sm;
+}
+
+.inspectorRowName {
+  font-family: $font-mono;
+  color: $text;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspectorPk { font-size: 12px; }
+
+.inspectorRowType {
+  font-family: $font-mono;
+  color: $text-muted;
+  font-size: $fs-xs;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspectorRowFlags {
+  display: inline-flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.inspectorFlagPk,
+.inspectorFlagReq {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+
+.inspectorFlagPk {
+  background: rgba(var(--color-primary-rgb), 0.12);
+  color: $primary;
+}
+
+.inspectorFlagReq {
+  background: $surface-alt;
+  color: $text-muted;
+  border: 1px solid $border;
+}

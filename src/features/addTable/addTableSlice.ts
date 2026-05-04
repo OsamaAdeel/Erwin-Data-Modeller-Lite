@@ -18,6 +18,12 @@ import {
   sortLatest,
 } from "@/services/folder/folderScan";
 import {
+  getRecentFolder,
+  listRecentFolders,
+  removeRecentFolder,
+  saveRecentFolder,
+} from "@/services/folder/recentFolders";
+import {
   clearFolderFiles,
   clearPreferredFolderHandle,
   deleteParsedDoc,
@@ -29,6 +35,52 @@ import {
   setParsedDoc,
   setPreferredFolderHandle,
 } from "@/store/refs";
+import { NS } from "@/services/xml/namespaces";
+
+// --- Sample-model relationship helper ---------------------------------
+//
+// The emitter only knows about entities. To make the demo model render
+// with edges in the ERD tab, we synthesise minimal EMX:Relationship
+// nodes here. Looks up entity ids by `name` attribute (the emitter sets
+// it when adding) so we don't need addEntityDMv9 to return ids.
+
+function findEntityIdByName(doc: Document, name: string): string | null {
+  const entities = doc.getElementsByTagNameNS(NS.emx, "Entity");
+  for (const e of Array.from(entities)) {
+    if (e.getAttribute("name") === name) return e.getAttribute("id");
+  }
+  return null;
+}
+
+function addSampleRelationship(
+  doc: Document,
+  parentName: string,
+  childName: string,
+  relName: string
+): void {
+  const parentId = findEntityIdByName(doc, parentName);
+  const childId = findEntityIdByName(doc, childName);
+  if (!parentId || !childId) return;
+
+  const relId = `{${crypto.randomUUID().toUpperCase()}}+00000000`;
+  const rel = doc.createElementNS(NS.emx, "EMX:Relationship");
+  rel.setAttribute("id", relId);
+  rel.setAttribute("name", relName);
+
+  const props = doc.createElementNS(NS.emx, "EMX:RelationshipProps");
+  const txt = (tag: string, text: string) => {
+    const el = doc.createElementNS(NS.emx, "EMX:" + tag);
+    el.textContent = text;
+    return el;
+  };
+  props.appendChild(txt("Long_Id", relId));
+  props.appendChild(txt("Name", relName));
+  props.appendChild(txt("Parent_Entity_Ref", parentId));
+  props.appendChild(txt("Child_Entity_Ref", childId));
+  rel.appendChild(props);
+
+  doc.documentElement.appendChild(rel);
+}
 
 export interface SuccessInfo {
   tableName: string;       // last added; kept for single-table back-compat
@@ -69,6 +121,16 @@ export interface PreferredFolderState {
   refreshable: boolean;
   loading: boolean;
   error?: string;
+  // IDB-backed list of recently picked folders. Each entry is a handle the
+  // user can re-open with one permission click. The actual handle lives in
+  // IDB; only the display tuple is mirrored to the slice.
+  recents: RecentFolderMeta[];
+}
+
+export interface RecentFolderMeta {
+  id: string;
+  name: string;
+  lastUsedAt: number;
 }
 
 export interface AddTableState {
@@ -115,6 +177,7 @@ const initialFolderState: PreferredFolderState = {
   refreshable: false,
   loading: false,
   error: undefined,
+  recents: [],
 };
 
 const initialState: AddTableState = {
@@ -209,6 +272,15 @@ export const pickFolder = createAsyncThunk<
       if (file) void dispatch(loadFile(file));
     }
 
+    // Persist the handle for the recent-folders dropdown — only meaningful
+    // when we actually have a handle (FS Access API path). Best-effort:
+    // a failure here doesn't fail the pick.
+    if (result.handle) {
+      void saveRecentFolder(result.folderName, result.handle).then(() => {
+        void dispatch(hydrateRecentFolders());
+      });
+    }
+
     return {
       name: result.folderName,
       files: meta,
@@ -220,6 +292,93 @@ export const pickFolder = createAsyncThunk<
     return rejectWithValue(err instanceof Error ? err.message : String(err));
   }
 });
+
+/**
+ * Boot-time hydration: read the IDB recent-folders list and mirror the
+ * display tuple into Redux. Handles stay in IDB until the user clicks
+ * one — at that point we re-permission and rescan.
+ */
+export const hydrateRecentFolders = createAsyncThunk<
+  RecentFolderMeta[],
+  void,
+  ThunkConfig
+>("addTable/hydrateRecentFolders", async () => {
+  const records = await listRecentFolders();
+  return records.map((r) => ({
+    id: r.id,
+    name: r.name,
+    lastUsedAt: r.lastUsedAt,
+  }));
+});
+
+/**
+ * Re-open a recent folder by id. Requests read permission, rescans, and
+ * loads the latest .xml — same downstream flow as pickFolder.fulfilled.
+ *
+ * If permission is denied or the handle is no longer resolvable, the
+ * entry is purged from IDB so the dropdown stops showing a dead row.
+ */
+export const useRecentFolder = createAsyncThunk<
+  PickFolderResult,
+  string,
+  ThunkConfig
+>("addTable/useRecentFolder", async (id, { dispatch, rejectWithValue }) => {
+  const record = await getRecentFolder(id);
+  if (!record) return rejectWithValue("That folder is no longer in your recent list.");
+
+  try {
+    const entries = await rescanHandle(record.handle);
+
+    clearFolderFiles();
+    clearPreferredFolderHandle();
+    setPreferredFolderHandle(record.handle);
+
+    const xmlEntries = sortLatest(filterXml(entries));
+    for (const e of xmlEntries) setFolderFile(e.id, e.file);
+
+    const meta: FolderFileMeta[] = xmlEntries.map((e) => ({
+      id: e.id,
+      name: e.name,
+      lastModified: e.lastModified,
+      size: e.size,
+    }));
+
+    const autoSelectedId = meta[0]?.id ?? null;
+    if (autoSelectedId) {
+      const file = getFolderFile(autoSelectedId);
+      if (file) void dispatch(loadFile(file));
+    }
+
+    // Bump lastUsedAt so the entry surfaces at the top next time.
+    void saveRecentFolder(record.name, record.handle).then(() => {
+      void dispatch(hydrateRecentFolders());
+    });
+
+    return {
+      name: record.name,
+      files: meta,
+      refreshable: true,
+      autoSelectedId,
+    };
+  } catch (err) {
+    // Permission revoked or handle invalidated — drop the entry and
+    // surface a friendly message.
+    if (err instanceof FolderPickError) {
+      await removeRecentFolder(id);
+      void dispatch(hydrateRecentFolders());
+      return rejectWithValue(err.message);
+    }
+    return rejectWithValue(err instanceof Error ? err.message : String(err));
+  }
+});
+
+export const forgetRecentFolder = createAsyncThunk<void, string, ThunkConfig>(
+  "addTable/forgetRecentFolder",
+  async (id, { dispatch }) => {
+    await removeRecentFolder(id);
+    void dispatch(hydrateRecentFolders());
+  }
+);
 
 /**
  * Re-iterate the persisted directory handle and rebuild the file list.
@@ -344,6 +503,14 @@ export const loadSample = createAsyncThunk<void, void, ThunkConfig>(
         newCol("IN_STOCK", "CHAR", "1", false, false),
       ], tmpDomainMap);
 
+      // Wire two minimal Relationship elements so the ERD tab demos
+      // the dagre layout instead of three disconnected boxes. The
+      // relationships parser only reads parent/child entity refs and
+      // the OFSAA validator doesn't gate on relationship structure,
+      // so a stripped-down RelationshipProps is enough.
+      addSampleRelationship(tmpDoc, "CUSTOMERS", "SALES_ORDERS", "FK_ORDER_CUSTOMER");
+      addSampleRelationship(tmpDoc, "PRODUCTS", "SALES_ORDERS", "FK_ORDER_PRODUCT");
+
       const populated = serializeDoc(tmpDoc);
       const file = new File([populated], "sample-erwin.xml", {
         type: "application/xml",
@@ -400,6 +567,53 @@ export const validateModel = createAsyncThunk<OfsaaValidationResult, void, Thunk
     }
 
     return validateOfsaaXml(serializeDoc(cloneDoc));
+  }
+);
+
+/**
+ * Build the would-be output XML against a clone of the live doc. Like
+ * validateModel, this never touches the in-memory doc the user is
+ * working against — gives the user a chance to eyeball the XML and the
+ * proposed filename before the actual download is triggered.
+ */
+export interface PreviewInfo {
+  xml: string;
+  filename: string;
+  tablesAdded: number;
+}
+
+export const previewXml = createAsyncThunk<PreviewInfo, void, ThunkConfig>(
+  "addTable/previewXml",
+  async (_, { getState, rejectWithValue }) => {
+    const { parsed, stagedTables } = getState().addTable;
+    if (!parsed) return rejectWithValue("No XML loaded");
+    if (stagedTables.length === 0) return rejectWithValue("No tables to add");
+    const liveDoc = getParsedDoc(parsed.parseId);
+    if (!liveDoc) return rejectWithValue("Parsed document is no longer available");
+
+    const cloneXml = serializeDoc(liveDoc);
+    const cloneDoc = new DOMParser().parseFromString(cloneXml, "application/xml");
+
+    try {
+      for (const t of stagedTables) {
+        const trimmedCols = t.columns.map((c) => ({ ...c, name: c.name.trim() }));
+        const trimmedName = t.table_name.trim();
+        if (parsed.variant === "erwin-dm-v9") {
+          addEntityDMv9(cloneDoc, trimmedName, trimmedCols, parsed.domainMap);
+        } else {
+          addEntityClassic(cloneDoc, trimmedName, trimmedCols);
+        }
+      }
+    } catch (err) {
+      if (err instanceof EmitterError) return rejectWithValue(err.message);
+      throw err;
+    }
+
+    return {
+      xml: serializeDoc(cloneDoc),
+      filename: generateNextFileName(parsed.fileName),
+      tablesAdded: stagedTables.length,
+    };
   }
 );
 
@@ -490,6 +704,9 @@ const slice = createSlice({
       const [moved] = state.columns.splice(fromIdx, 1);
       const newToIdx = state.columns.findIndex((c) => c.id === toId);
       state.columns.splice(before ? newToIdx : newToIdx + 1, 0, moved);
+      // Reordering changes Physical_Order indices in the emit; previous
+      // validation pass no longer reflects what would be generated.
+      state.validationResult = null;
     },
     updateColumn(
       state,
@@ -505,6 +722,8 @@ const slice = createSlice({
         col.size = "";
         col.scale = "";
       }
+      // Any column edit invalidates a previous validation pass.
+      state.validationResult = null;
     },
     resetForm(state) {
       state.tableName = "";
@@ -579,7 +798,7 @@ const slice = createSlice({
       state.validationResult = null;
     },
     clearFolder(state) {
-      state.folder = initialFolderState;
+      state.folder = { ...initialFolderState, recents: state.folder.recents };
       clearFolderFiles();
       clearPreferredFolderHandle();
     },
@@ -648,6 +867,9 @@ const slice = createSlice({
         state.folder.loading = false;
         if (!action.payload) return; // user cancelled — keep prior state
         const { name, files, refreshable, autoSelectedId } = action.payload;
+        // Preserve the recents list across folder swaps — it lives in IDB
+        // and is hydrated separately, but the in-memory copy must survive.
+        const recents = state.folder.recents;
         state.folder = {
           name,
           files,
@@ -655,6 +877,7 @@ const slice = createSlice({
           refreshable,
           loading: false,
           error: undefined,
+          recents,
         };
       })
       .addCase(pickFolder.rejected, (state, action) => {
@@ -667,6 +890,7 @@ const slice = createSlice({
       })
       .addCase(refreshFolder.fulfilled, (state, action) => {
         const { name, files, refreshable, autoSelectedId } = action.payload;
+        const recents = state.folder.recents;
         state.folder = {
           name,
           files,
@@ -674,6 +898,7 @@ const slice = createSlice({
           refreshable,
           loading: false,
           error: undefined,
+          recents,
         };
       })
       .addCase(refreshFolder.rejected, (state, action) => {
@@ -684,6 +909,30 @@ const slice = createSlice({
         state.folder.selectedFileId = action.payload;
       })
       .addCase(selectFolderFile.rejected, (state, action) => {
+        state.folder.error = action.payload ?? action.error.message;
+      })
+      .addCase(hydrateRecentFolders.fulfilled, (state, action) => {
+        state.folder.recents = action.payload;
+      })
+      .addCase(useRecentFolder.pending, (state) => {
+        state.folder.loading = true;
+        state.folder.error = undefined;
+      })
+      .addCase(useRecentFolder.fulfilled, (state, action) => {
+        const { name, files, refreshable, autoSelectedId } = action.payload;
+        const recents = state.folder.recents;
+        state.folder = {
+          name,
+          files,
+          selectedFileId: autoSelectedId,
+          refreshable,
+          loading: false,
+          error: undefined,
+          recents,
+        };
+      })
+      .addCase(useRecentFolder.rejected, (state, action) => {
+        state.folder.loading = false;
         state.folder.error = action.payload ?? action.error.message;
       });
   },

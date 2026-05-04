@@ -28,7 +28,16 @@ export default function ErdPanel() {
   const erd = useErd();
   const [hovered, setHovered] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [inspectedId, setInspectedId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const inspectedEntity = useMemo(
+    () =>
+      inspectedId && erd.data
+        ? erd.data.model.entities.find((e) => e.id === inspectedId) ?? null
+        : null,
+    [inspectedId, erd.data]
+  );
 
   // Debounce the search 100 ms before recomputing the match set. Invisible
   // on small models (matched within 100 ms feels instant); on a 500-entity
@@ -63,6 +72,18 @@ export default function ErdPanel() {
       setSearch("");
     }
   }
+
+  // Esc closes the inspector when it's open. Single global listener — the
+  // inspector panel itself is not focused, so we can't rely on a local
+  // keydown handler.
+  useEffect(() => {
+    if (!inspectedId) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setInspectedId(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [inspectedId]);
 
   function clearSearch() {
     setSearch("");
@@ -162,6 +183,7 @@ export default function ErdPanel() {
               contentWidth={erd.data.layout.width}
               contentHeight={erd.data.layout.height}
               minimapEntities={Array.from(erd.data.layout.nodes.values())}
+              minimapMatchedIds={isSearching ? matchedIds : undefined}
             >
               {/* draw edges first so they sit behind entity cards */}
               {erd.data.layout.edges.map((e) => {
@@ -195,10 +217,58 @@ export default function ErdPanel() {
                     isDimmed={isDimmed}
                     onMouseEnter={() => setHovered(ent.id)}
                     onMouseLeave={() => setHovered(null)}
+                    onActivate={() => setInspectedId(ent.id)}
                   />
                 );
               })}
             </ErdViewport>
+          )}
+
+          {inspectedEntity && (
+            <div className={styles.inspector} role="region" aria-label={`Columns of ${inspectedEntity.name}`}>
+              <div className={styles.inspectorHead}>
+                <div className={styles.inspectorTitleWrap}>
+                  <span className={styles.inspectorEyebrow}>Entity</span>
+                  <span className={styles.inspectorTitle}>{inspectedEntity.name}</span>
+                  <span className={styles.inspectorCount}>
+                    {inspectedEntity.columns.length} column{inspectedEntity.columns.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.inspectorClose}
+                  onClick={() => setInspectedId(null)}
+                  aria-label="Close inspector"
+                  title="Close (Esc)"
+                >
+                  ×
+                </button>
+              </div>
+              {inspectedEntity.columns.length === 0 ? (
+                <p className={styles.inspectorEmpty}>This entity has no columns.</p>
+              ) : (
+                <ul className={styles.inspectorList}>
+                  {inspectedEntity.columns.map((c) => {
+                    const notNull = c.nullable && c.nullable.toLowerCase() === "false";
+                    return (
+                      <li key={c.id} className={styles.inspectorRow}>
+                        <span className={styles.inspectorRowName}>
+                          {c.isPk && <span className={styles.inspectorPk} title="Primary key">🔑</span>}
+                          {c.name}
+                        </span>
+                        <span className={styles.inspectorRowType}>
+                          {c.physicalDataType || c.domainName || "—"}
+                        </span>
+                        <span className={styles.inspectorRowFlags}>
+                          {c.isPk && <span className={styles.inspectorFlagPk}>PK</span>}
+                          {notNull && <span className={styles.inspectorFlagReq}>NOT NULL</span>}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           )}
 
           <div className={styles.legend}>
@@ -207,6 +277,8 @@ export default function ErdPanel() {
             <span>{t.view.legendZoom}</span>
             <span>·</span>
             <span>{t.view.legendHover}</span>
+            <span>·</span>
+            <span>Click an entity to see all columns</span>
           </div>
         </Card>
       )}

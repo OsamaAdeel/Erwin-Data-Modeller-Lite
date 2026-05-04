@@ -46,6 +46,13 @@ const DEFAULT_SECTIONS: HotkeySection[] = [
       { keys: "Esc", label: "Cancel staged-table edit" },
     ],
   },
+  {
+    heading: "ERD Diagram",
+    entries: [
+      { keys: "Tab", label: "Cycle keyboard focus through entities" },
+      { keys: "Esc", label: "Clear the entity search" },
+    ],
+  },
 ];
 
 const FOCUSABLE_SELECTOR =

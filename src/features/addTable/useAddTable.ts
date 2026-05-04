@@ -11,10 +11,13 @@ import {
   deleteStagedTable as deleteStagedTableAction,
   editStagedTable as editStagedTableAction,
   finalize as finalizeAction,
+  forgetRecentFolder as forgetRecentFolderThunk,
   generate as generateThunk,
+  hydrateRecentFolders as hydrateRecentFoldersThunk,
   loadFile as loadFileThunk,
   loadSample as loadSampleThunk,
   pickFolder as pickFolderThunk,
+  previewXml as previewXmlThunk,
   refreshFolder as refreshFolderThunk,
   removeColumn as removeColumnAction,
   replaceColumns as replaceColumnsAction,
@@ -25,11 +28,14 @@ import {
   setTableName as setTableNameAction,
   unfinalize as unfinalizeAction,
   updateColumn as updateColumnAction,
+  useRecentFolder as useRecentFolderThunk,
   validateModel as validateModelThunk,
 } from "./addTableSlice";
 export type {
   FolderFileMeta,
   PreferredFolderState,
+  PreviewInfo,
+  RecentFolderMeta,
   StagedTable,
   SuccessInfo,
 } from "./addTableSlice";
@@ -166,6 +172,14 @@ export function useAddTable() {
     void dispatch(generateThunk());
   }, [dispatch]);
 
+  // Returns the would-be output XML + filename without triggering a
+  // download. Used by the "Preview XML" modal so the user can eyeball
+  // the emit before committing to it.
+  const previewXml = useCallback(
+    () => dispatch(previewXmlThunk()).unwrap(),
+    [dispatch]
+  );
+
   const validateModel = useCallback(() => {
     void dispatch(validateModelThunk());
   }, [dispatch]);
@@ -196,6 +210,24 @@ export function useAddTable() {
   const clearFolder = useCallback(() => {
     dispatch(clearFolderAction());
   }, [dispatch]);
+
+  const hydrateRecentFolders = useCallback(() => {
+    void dispatch(hydrateRecentFoldersThunk());
+  }, [dispatch]);
+
+  const useRecentFolder = useCallback(
+    (id: string) => {
+      void dispatch(useRecentFolderThunk(id));
+    },
+    [dispatch]
+  );
+
+  const forgetRecentFolder = useCallback(
+    (id: string) => {
+      void dispatch(forgetRecentFolderThunk(id));
+    },
+    [dispatch]
+  );
 
   const canFinalize = !isFinalized && stagedTables.length > 0;
   const canGenerate = isFinalized && stagedTables.length > 0;
@@ -235,6 +267,7 @@ export function useAddTable() {
     finalize,
     unfinalize,
     generate,
+    previewXml,
     validateModel,
     clearValidationResult,
     resetForm,
@@ -242,5 +275,8 @@ export function useAddTable() {
     refreshFolder,
     selectFolderFile,
     clearFolder,
+    hydrateRecentFolders,
+    useRecentFolder,
+    forgetRecentFolder,
   };
 }
