@@ -46,6 +46,10 @@ export default function AddTablePanel() {
   const [ddlWarnings, setDdlWarnings] = useState<string[]>([]);
   // Filter for the staged-tables grid. Pure UI state.
   const [stagedSearch, setStagedSearch] = useState("");
+  // Confirm dialog for the Reset button. Only used when the user has
+  // unsaved work (staged tables or a finalized model) — empty sessions
+  // reset immediately.
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   // Step 2 entity browser — name of the entity whose property card is open,
   // or null when nothing is selected. Cleared on file change (parseId effect
   // below).
@@ -96,6 +100,7 @@ export default function AddTablePanel() {
     validationResult,
     validating,
     replaceColumns,
+    resetSession,
     folder,
     pickFolder,
     refreshFolder,
@@ -216,6 +221,26 @@ export default function AddTablePanel() {
     generate();
   }
 
+  // Reset wipes the loaded file, staged tables, form, finalization, and
+  // success/validation state — but keeps the preferred-folder pick. We
+  // confirm only when there's actual work at risk; an empty session
+  // resets in one click.
+  const hasResetableWork = stagedTables.length > 0 || isFinalized;
+  function handleReset() {
+    if (hasResetableWork) {
+      setResetConfirmOpen(true);
+    } else {
+      doReset();
+    }
+  }
+  function doReset() {
+    setResetConfirmOpen(false);
+    resetSession();
+    // Step 1 was collapsed to the loaded-summary row; expand it back to
+    // the upload UI so the user lands on a familiar empty state.
+    setShowUploaders(true);
+  }
+
   // ⌘/Ctrl+Enter from inside the panel commits the staged table. The
   // handler is on the panel root, so the bubble path naturally enforces
   // the "panel form has focus" requirement: a key event only reaches us
@@ -261,9 +286,19 @@ export default function AddTablePanel() {
                 </div>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setShowUploaders(true)}>
-              Change file
-            </Button>
+            <div className={styles.loadedSummaryActions}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                title="Clear the loaded file, staged tables, and form"
+              >
+                Reset
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowUploaders(true)}>
+                Change file
+              </Button>
+            </div>
           </div>
         ) : (
           <>
@@ -738,6 +773,26 @@ export default function AddTablePanel() {
         cancelLabel="Close"
         onConfirm={() => setPreviewState({ kind: "closed" })}
         onCancel={() => setPreviewState({ kind: "closed" })}
+      />
+      <ConfirmModal
+        open={resetConfirmOpen}
+        title="Reset the session?"
+        message={(() => {
+          const parts: string[] = [];
+          if (stagedTables.length > 0) {
+            parts.push(
+              `${stagedTables.length} staged table${stagedTables.length === 1 ? "" : "s"}`
+            );
+          }
+          if (isFinalized) parts.push("the finalized model");
+          const what = parts.length ? parts.join(" and ") : "the loaded file";
+          return `${what} will be cleared. Your preferred-folder pick is kept. This can't be undone.`;
+        })()}
+        confirmLabel="Reset"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={doReset}
+        onCancel={() => setResetConfirmOpen(false)}
       />
     </div>
   );

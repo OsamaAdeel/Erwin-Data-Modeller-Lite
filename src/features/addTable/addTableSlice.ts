@@ -660,6 +660,32 @@ const slice = createSlice({
   name: "addTable",
   initialState,
   reducers: {
+    /**
+     * Wipe the session back to its empty state — clears the loaded file,
+     * staged tables, form, finalization, success toast, and the validator
+     * dry-run result. Preserves the user's preferred-folder pick because
+     * that's a session-level preference, independent of the file.
+     * The associated parsed XMLDocument is removed from the ref store
+     * so it can be GC'd.
+     */
+    resetSession(state) {
+      if (state.parsed) {
+        deleteParsedDoc(state.parsed.parseId);
+      }
+      state.parsed = null;
+      state.loadError = undefined;
+      state.loading = false;
+      state.tableName = "";
+      state.description = "";
+      state.columns = [makeColumn()];
+      state.stagedTables = [];
+      state.editingId = null;
+      state.isFinalized = false;
+      state.success = undefined;
+      state.validationResult = null;
+      state.validating = false;
+      // state.folder is intentionally preserved.
+    },
     setTableName(state, action: PayloadAction<string>) {
       state.tableName = action.payload;
     },
@@ -947,6 +973,7 @@ export const {
   reorderColumns,
   updateColumn,
   resetForm,
+  resetSession,
   commitTable,
   deleteStagedTable,
   editStagedTable,
