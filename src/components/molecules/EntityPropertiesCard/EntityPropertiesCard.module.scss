@@ -1,0 +1,121 @@
+.card {
+  margin-top: $space-3;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  background: $surface-alt;
+  border-bottom: 1px solid $border;
+}
+
+.headLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eyebrow {
+  font-size: $fs-xs;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: $primary;
+}
+
+.title {
+  font-family: $font-mono;
+  font-weight: 600;
+  font-size: $fs-lg;
+  color: $text;
+  word-break: break-all;
+}
+
+.count {
+  font-size: $fs-sm;
+  color: $text-muted;
+}
+
+.mono {
+  font-family: $font-mono;
+}
+
+.close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid $border-2;
+  background: $surface;
+  border-radius: $radius-sm;
+  font-size: 18px;
+  line-height: 1;
+  color: $text-muted;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+
+  &:hover { color: $text; border-color: $border; }
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: 2px;
+  }
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $fs-sm;
+
+  th, td {
+    text-align: left;
+    padding: $space-2 $space-3;
+    border-bottom: 1px solid $border;
+    vertical-align: top;
+  }
+
+  thead th {
+    background: $surface-alt;
+    font-weight: 600;
+    color: $text-muted;
+    font-size: $fs-xs;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child th,
+  tbody tr:last-child td { border-bottom: 0; }
+
+  tbody tr:hover { background: $surface-alt; }
+}
+
+.pkRow th[scope="row"] { color: $primary; }
+
+.colName {
+  font-family: $font-mono;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.muted { color: $text-dim; }
+
+.empty {
+  margin: 0;
+  padding: $space-5 $space-3;
+  color: $text-muted;
+  text-align: center;
+  font-style: italic;
+}

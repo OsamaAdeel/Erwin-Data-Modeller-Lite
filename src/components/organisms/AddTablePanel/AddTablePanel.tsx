@@ -7,6 +7,7 @@ import Badge from "@/components/atoms/Badge";
 import Textarea from "@/components/atoms/Textarea";
 import Field from "@/components/molecules/Field";
 import ConfirmModal from "@/components/molecules/ConfirmModal";
+import EntityPropertiesCard from "@/components/molecules/EntityPropertiesCard";
 import FileDrop from "@/components/molecules/FileDrop";
 import FolderPicker from "@/components/molecules/FolderPicker";
 import StatTile from "@/components/molecules/StatTile";
@@ -15,8 +16,10 @@ import XmlPreviewModal from "@/components/molecules/XmlPreviewModal";
 import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
 import type { StagedTable } from "@/features/addTable/useAddTable";
+import { collectFullModel } from "@/services/xml/model";
 import { generateNextFileName } from "@/services/xml/serialize";
 import { parseOracleDdl } from "@/services/ddl/ddlParser";
+import { getParsedDoc } from "@/store/refs";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
 
@@ -38,6 +41,10 @@ export default function AddTablePanel() {
   const [ddlWarnings, setDdlWarnings] = useState<string[]>([]);
   // Filter for the staged-tables grid. Pure UI state.
   const [stagedSearch, setStagedSearch] = useState("");
+  // Step 2 entity browser — name of the entity whose property card is open,
+  // or null when nothing is selected. Cleared on file change (parseId effect
+  // below).
+  const [selectedEntityName, setSelectedEntityName] = useState<string | null>(null);
   // Output-XML preview modal state. `pending` while the clone+emit
   // round-trip runs so the button can show a busy label.
   const [previewState, setPreviewState] = useState<
@@ -103,6 +110,29 @@ export default function AddTablePanel() {
   useEffect(() => {
     if (parsed?.parseId) setShowUploaders(false);
   }, [parsed?.parseId]);
+
+  // Drop the Step-2 selection when a different file is loaded — names from
+  // the prior model would no longer resolve.
+  useEffect(() => {
+    setSelectedEntityName(null);
+  }, [parsed?.parseId]);
+
+  // Lazily build the full structured model (with columns + PKs) for Step 2's
+  // property card. Memoized on parseId — collectFullModel walks the doc, so
+  // we don't want to redo it on every keystroke.
+  const fullModel = useMemo(() => {
+    if (!parsed) return null;
+    const doc = getParsedDoc(parsed.parseId);
+    return doc ? collectFullModel(doc) : null;
+  }, [parsed?.parseId]);
+
+  const selectedEntity = useMemo(
+    () =>
+      fullModel && selectedEntityName
+        ? fullModel.entitiesByUpper.get(selectedEntityName.toUpperCase()) ?? null
+        : null,
+    [fullModel, selectedEntityName]
+  );
 
   const filteredEntities = useMemo(() => {
     if (!parsed) return [];
@@ -269,12 +299,39 @@ export default function AddTablePanel() {
               />
               <ul className={styles.entityNames}>
                 {filteredEntities.length === 0 && (
-                  <li className={styles.entityEmpty}>No matches</li>
+                  <li className={styles.entityEmpty}>
+                    {parsed.entityDict.size === 0
+                      ? "No tables in this model."
+                      : "No tables found."}
+                  </li>
                 )}
-                {filteredEntities.map((n) => (
-                  <li key={n} title={n}>{n}</li>
-                ))}
+                {filteredEntities.map((n) => {
+                  const isSelected =
+                    selectedEntityName != null &&
+                    n.toUpperCase() === selectedEntityName.toUpperCase();
+                  return (
+                    <li key={n}>
+                      <button
+                        type="button"
+                        className={`${styles.entityPill} ${isSelected ? styles.entityPillActive : ""}`}
+                        title={n}
+                        aria-pressed={isSelected}
+                        onClick={() =>
+                          setSelectedEntityName((cur) => (cur === n ? null : n))
+                        }
+                      >
+                        {n}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
+              {selectedEntity && (
+                <EntityPropertiesCard
+                  entity={selectedEntity}
+                  onClose={() => setSelectedEntityName(null)}
+                />
+              )}
             </div>
           </details>
         </Card>
