@@ -62,7 +62,7 @@ export default function FolderPicker({
             onForget={onForgetRecent}
           />
         )}
-        {error && <div className={styles.error}>{error}</div>}
+        {error && <div className={styles.error} role="alert">{error}</div>}
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function FolderPicker({
         </div>
       )}
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && <div className={styles.error} role="alert">{error}</div>}
 
       {!loading && files.length === 0 && (
         <div className={styles.emptyList}>

@@ -97,7 +97,11 @@ export default function FileDrop({
         </div>
       )}
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && (
+        <div className={styles.error} role="alert">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

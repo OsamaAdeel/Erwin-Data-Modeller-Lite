@@ -294,7 +294,9 @@ export default function MergePanel() {
             <Button onClick={m.execute} disabled={!m.canExecute}>
               {t.plan.execute}
             </Button>
-            {m.errors.general && <span className={styles.error}>{m.errors.general}</span>}
+            {m.errors.general && (
+              <span className={styles.error} role="alert">{m.errors.general}</span>
+            )}
           </div>
         </Card>
       )}

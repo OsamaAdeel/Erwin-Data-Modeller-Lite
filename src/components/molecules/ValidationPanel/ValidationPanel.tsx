@@ -40,7 +40,11 @@ export default function ValidationPanel({
   }
 
   return (
-    <details className={`${styles.fail} ${className}`} open>
+    // role="alert" on the wrapper triggers an SR announcement when the
+    // panel mounts (i.e. right after the user clicks "Validate"). The
+    // <details> still works as a normal disclosure widget — role only
+    // affects ARIA, not native click behavior.
+    <details className={`${styles.fail} ${className}`} open role="alert">
       <summary>
         <Badge tone="danger">!</Badge>
         <span>
