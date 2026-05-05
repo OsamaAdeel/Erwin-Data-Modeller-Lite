@@ -49,8 +49,12 @@ const DEFAULT_SECTIONS: HotkeySection[] = [
   {
     heading: "ERD Diagram",
     entries: [
-      { keys: "Tab", label: "Cycle keyboard focus through entities" },
+      { keys: "Tab", label: "Move keyboard focus into the canvas / through entities" },
       { keys: "Esc", label: "Clear the entity search" },
+      { keys: "+", label: "Zoom in (canvas focused)" },
+      { keys: "-", label: "Zoom out (canvas focused)" },
+      { keys: "0", label: "Fit diagram to the viewport" },
+      { keys: "← ↑ ↓ →", label: "Pan the canvas (Shift for larger steps)" },
     ],
   },
 ];
@@ -169,7 +173,9 @@ function Row({ keys, label }: HotkeyEntry) {
   // Split on "+" so each modifier becomes its own <kbd> chip with a
   // small "+" between. "⌘/Ctrl" stays as a single chip — we never split
   // on "/" because that's our shorthand for "either of these".
-  const parts = keys.split("+");
+  // Special case: a lone "+" splits to ["", ""], which would render two
+  // empty chips. Treat it as a single literal "+" chip instead.
+  const parts = keys === "+" ? ["+"] : keys.split("+");
   return (
     <>
       <dt className={styles.keys}>

@@ -20,6 +20,15 @@
   touch-action: none;
 
   &:active { cursor: grabbing; }
+
+  // Keyboard focus ring sits inside the wrap's border so users see
+  // exactly which surface is keyboard-targeted.
+  &:focus { outline: none; }
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: -3px;
+    border-radius: $radius;
+  }
 }
 
 // Minimap takes the top-right corner with a $space-3 inset (per spec).
