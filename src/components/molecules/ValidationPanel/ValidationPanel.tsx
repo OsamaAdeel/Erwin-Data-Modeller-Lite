@@ -3,7 +3,7 @@
 // violations list on failure. Used by both Add Tables (Step 5) and Merge
 // Models (Step 3) — wherever a generated XML can be dry-run validated.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Badge from "@/components/atoms/Badge";
 import type { OfsaaValidationResult, Violation } from "@/services/xml/validator";
 import styles from "./ValidationPanel.module.scss";
@@ -30,9 +30,19 @@ export default function ValidationPanel({
     return Array.from(out.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [result]);
 
+  // ARIA live regions only re-announce when their text content changes.
+  // If the user re-runs the validator and gets the same result, the DOM
+  // is identical — silent. We bump a runId on each new result and use it
+  // as a React key on the live region wrapper, forcing a remount that
+  // SRs treat as a fresh announcement.
+  const [runId, setRunId] = useState(0);
+  useEffect(() => {
+    setRunId((n) => n + 1);
+  }, [result]);
+
   if (result.ok) {
     return (
-      <div className={`${styles.ok} ${className}`} role="status">
+      <div key={runId} className={`${styles.ok} ${className}`} role="status">
         <Badge tone="success">✓</Badge>
         <span>{successMessage}</span>
       </div>
@@ -44,7 +54,7 @@ export default function ValidationPanel({
     // panel mounts (i.e. right after the user clicks "Validate"). The
     // <details> still works as a normal disclosure widget — role only
     // affects ARIA, not native click behavior.
-    <details className={`${styles.fail} ${className}`} open role="alert">
+    <details key={runId} className={`${styles.fail} ${className}`} open role="alert">
       <summary>
         <Badge tone="danger">!</Badge>
         <span>

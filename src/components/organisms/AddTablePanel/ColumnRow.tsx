@@ -1,4 +1,4 @@
-import { DragEvent, useMemo, useRef, useState } from "react";
+import { DragEvent, KeyboardEvent as ReactKeyboardEvent, useMemo, useRef, useState } from "react";
 import { DATA_TYPES, MAX_IDENTIFIER_LEN, TYPE_LIMITS } from "@/services/ddl/oracleParser";
 import type { DataType, NewColumnSpec } from "@/services/xml/types";
 import Input from "@/components/atoms/Input";
@@ -13,6 +13,9 @@ export interface ColumnRowProps {
   isOnly: boolean;
   /** Disable all interactions (e.g. when the model is finalized). */
   locked?: boolean;
+  /** Sibling ids in render order. Used by the keyboard reorder handler on
+   *  the drag handle so Up/Down can move this row even without a mouse. */
+  siblingIds?: string[];
   onChange: (patch: Partial<NewColumnSpec>) => void;
   onRemove: () => void;
   onReorder?: (fromId: string, toId: string, before: boolean) => void;
@@ -23,6 +26,7 @@ export default function ColumnRow({
   error,
   isOnly,
   locked = false,
+  siblingIds,
   onChange,
   onRemove,
   onReorder,
@@ -77,6 +81,21 @@ export default function ColumnRow({
     onReorder(fromId, column.id, dragOver === "above");
   }
 
+  // Up/Down on the drag handle reorders by one slot. Without this, keyboard
+  // users (no pointer device) couldn't reorder columns at all — the rest of
+  // the row only handles native drag events.
+  function handleHandleKeyDown(e: ReactKeyboardEvent<HTMLButtonElement>) {
+    if (locked || !onReorder || !siblingIds || siblingIds.length < 2) return;
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    const idx = siblingIds.indexOf(column.id);
+    if (idx < 0) return;
+    const targetIdx = e.key === "ArrowUp" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= siblingIds.length) return;
+    e.preventDefault();
+    const targetId = siblingIds[targetIdx];
+    onReorder(column.id, targetId, e.key === "ArrowUp");
+  }
+
   return (
     <>
       <div
@@ -91,16 +110,18 @@ export default function ColumnRow({
         <button
           type="button"
           className={styles.dragHandle}
-          aria-label="Drag to reorder"
-          title="Drag to reorder"
+          aria-label="Reorder column (drag, or Up/Down arrow)"
+          title="Drag, or Up/Down arrow, to reorder"
           draggable={!locked && !!onReorder}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onKeyDown={handleHandleKeyDown}
           disabled={locked}
         >
           <DragGlyph />
         </button>
         <Input
+          kind="code"
           placeholder="COLUMN_NAME"
           spellCheck={false}
           autoComplete="off"
@@ -153,6 +174,7 @@ export default function ColumnRow({
             type="checkbox"
             checked={column.nullable}
             disabled={column.pk}
+            aria-label="Nullable"
             onChange={(e) => onChange({ nullable: e.target.checked })}
           />
         </label>
@@ -160,6 +182,7 @@ export default function ColumnRow({
           <input
             type="checkbox"
             checked={column.pk}
+            aria-label="Primary key"
             onChange={(e) => onChange({ pk: e.target.checked })}
           />
         </label>
@@ -167,10 +190,11 @@ export default function ColumnRow({
           type="button"
           className={styles.removeBtn}
           disabled={isOnly}
+          aria-label="Remove column"
           title="Remove column"
           onClick={onRemove}
         >
-          ×
+          <RemoveGlyph />
         </button>
       </div>
       {error && <div className={styles.error}>{error.message}</div>}
@@ -187,6 +211,25 @@ function DragGlyph() {
       <circle cx="9" cy="3" r="1.2" />
       <circle cx="9" cy="7" r="1.2" />
       <circle cx="9" cy="11" r="1.2" />
+    </svg>
+  );
+}
+
+function RemoveGlyph() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 }

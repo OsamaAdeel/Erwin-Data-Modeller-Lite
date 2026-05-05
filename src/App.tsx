@@ -6,13 +6,14 @@ import HotkeysModal, { useGlobalHelpHotkey } from "@/components/molecules/Hotkey
 import AddTablePanel from "@/components/organisms/AddTablePanel";
 import MergePanel from "@/components/organisms/MergePanel";
 import ErdPanel from "@/components/organisms/ErdPanel";
+import styles from "./App.module.scss";
 
 type TabKey = "add" | "merge" | "erd";
 
 function tabLabel(icon: ReactNode, text: string): ReactNode {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <span aria-hidden style={{ display: "inline-flex" }}>
+    <span className={styles.tabLabel}>
+      <span aria-hidden className={styles.tabLabelIcon}>
         {icon}
       </span>
       {text}

@@ -1,6 +1,10 @@
 .card {
   @include card;
   padding: $space-5 $space-6;
+
+  // Tighter padding on small viewports so the card chrome doesn't eat
+  // the content width on phones.
+  @include mobile { padding: $space-3 $space-4; }
 }
 
 .head {
