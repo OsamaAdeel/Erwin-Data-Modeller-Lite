@@ -94,6 +94,18 @@
   code { color: $text; }
 }
 
+// Per-table warnings under an imported entry — amber so they stand out
+// against the green "imported" tone without competing with the red
+// "skipped" issues block above.
+.bulkResultAddedWarnings {
+  margin: 4px 0 0;
+  padding-left: $space-4;
+  color: $amber;
+  font-size: $fs-sm;
+
+  li { line-height: 1.4; }
+}
+
 // Collapsed Step-1 summary row: shown once a file is loaded, replaces
 // the dropzone+picker block until the user clicks "Change file".
 .loadedSummary {
