@@ -1,6 +1,12 @@
 import { ReactNode } from "react";
 import styles from "./TabBar.module.scss";
 
+// IDs follow `tab-{key}` and `panel-{key}` conventions. The matching panel
+// element (rendered by the consumer) should use `id={tabPanelId(key)}` and
+// `aria-labelledby={tabId(key)}` to complete the ARIA relationship.
+export const tabId = (key: string) => `tab-${key}`;
+export const tabPanelId = (key: string) => `panel-${key}`;
+
 export interface TabItem<TKey extends string> {
   key: TKey;
   label: ReactNode;
@@ -27,7 +33,10 @@ export default function TabBar<TKey extends string>({
             key={t.key}
             type="button"
             role="tab"
+            id={tabId(t.key)}
+            aria-controls={tabPanelId(t.key)}
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             disabled={t.disabled}
             className={`${styles.tab} ${isActive ? styles.active : ""}`}
             onClick={() => !t.disabled && onChange(t.key)}

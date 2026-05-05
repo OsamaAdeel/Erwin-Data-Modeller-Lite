@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { COMMON } from "@/CONSTANTS";
 import AppShell from "@/layout/AppShell";
-import TabBar, { type TabItem } from "@/components/molecules/TabBar";
+import TabBar, { tabId, tabPanelId, type TabItem } from "@/components/molecules/TabBar";
 import HotkeysModal, { useGlobalHelpHotkey } from "@/components/molecules/HotkeysModal";
 import AddTablePanel from "@/components/organisms/AddTablePanel";
 import MergePanel from "@/components/organisms/MergePanel";
@@ -61,9 +61,11 @@ export default function App() {
     <>
       <AppShell onHelp={openHelp}>
         <TabBar tabs={TABS} active={active} onChange={setActive} />
-        {active === "add" && <AddTablePanel />}
-        {active === "merge" && <MergePanel />}
-        {active === "erd" && <ErdPanel />}
+        <div role="tabpanel" id={tabPanelId(active)} aria-labelledby={tabId(active)}>
+          {active === "add" && <AddTablePanel />}
+          {active === "merge" && <MergePanel />}
+          {active === "erd" && <ErdPanel />}
+        </div>
       </AppShell>
       <HotkeysModal open={helpOpen} onClose={closeHelp} />
     </>

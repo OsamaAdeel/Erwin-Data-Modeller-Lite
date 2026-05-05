@@ -21,10 +21,24 @@
 .s-md { padding: 9px 16px;  font-size: $fs-md; }
 .s-lg { padding: 12px 22px; font-size: $fs-lg; }
 
+// Solid-fill variants need a distinct disabled state. The default opacity:0.5
+// applied by the @include clickable mixin renders a half-transparent blue/red,
+// which reads as "loading" — users wonder if their click is in flight.
+// We override with a clearly inert gray so "you can't click yet" is unambiguous.
+%solid-disabled {
+  background: $bg;
+  color: $text-dim;
+  border-color: $border;
+  opacity: 1;
+  box-shadow: none;
+  filter: none;
+}
+
 .v-primary {
   background: $primary;
   color: #fff;
   &:hover:not(:disabled) { background: $primary-dark; }
+  &:disabled { @extend %solid-disabled; }
 }
 
 .v-outline {
@@ -44,6 +58,7 @@
   background: $red;
   color: #fff;
   &:hover:not(:disabled) { filter: brightness(0.92); }
+  &:disabled { @extend %solid-disabled; }
   &:focus-visible {
     outline-color: rgba(var(--color-red-rgb), var(--focus-ring-alpha-strong));
   }
