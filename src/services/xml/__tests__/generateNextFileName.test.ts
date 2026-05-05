@@ -51,6 +51,40 @@ describe("generateNextFileName — multiple _v occurrences", () => {
   });
 });
 
+describe("generateNextFileName — v-padded pattern", () => {
+  it("zero-pads the initial version to width 2", () => {
+    expect(generateNextFileName("model.xml", "v-padded")).toBe("model_v01.xml");
+  });
+
+  it("preserves explicit padding width on increment", () => {
+    expect(generateNextFileName("model_v01.xml", "v-padded")).toBe("model_v02.xml");
+    expect(generateNextFileName("model_v003.xml", "v-padded")).toBe("model_v004.xml");
+  });
+
+  it("grows past the padded width when the number outgrows it", () => {
+    expect(generateNextFileName("model_v99.xml", "v-padded")).toBe("model_v100.xml");
+  });
+});
+
+describe("generateNextFileName — timestamp pattern", () => {
+  it("appends an ISO date stamp", () => {
+    const r = generateNextFileName("model.xml", "timestamp");
+    expect(r).toMatch(/^model_\d{4}-\d{2}-\d{2}\.xml$/);
+  });
+
+  it("strips a prior _v<n> suffix instead of stacking", () => {
+    const r = generateNextFileName("model_v3.xml", "timestamp");
+    expect(r).toMatch(/^model_\d{4}-\d{2}-\d{2}\.xml$/);
+    expect(r).not.toMatch(/_v3/);
+  });
+
+  it("strips a prior date suffix instead of stacking", () => {
+    const r = generateNextFileName("model_2024-01-15.xml", "timestamp");
+    expect(r).toMatch(/^model_\d{4}-\d{2}-\d{2}\.xml$/);
+    expect(r.match(/\d{4}-\d{2}-\d{2}/g)?.length).toBe(1);
+  });
+});
+
 describe("generateNextFileName — edge cases", () => {
   it("preserves spaces in the base name", () => {
     expect(generateNextFileName("customer data.xml")).toBe("customer data_v1.xml");

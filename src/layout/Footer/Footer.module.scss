@@ -9,7 +9,16 @@
   margin-top: auto;
 }
 .left { display: flex; gap: $space-2; align-items: center; flex-wrap: wrap; }
-.dot  { opacity: 0.5; }
+// CSS-rendered separator — a 3px circle. Replaces the prior text "·"
+// whose horizontal whitespace varied with font kerning across browsers.
+.dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+  display: inline-block;
+}
 .version { font-family: $font-mono; opacity: 0.85; }
 .link {
   display: inline-flex;

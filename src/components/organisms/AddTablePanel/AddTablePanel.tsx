@@ -79,7 +79,8 @@ export default function AddTablePanel() {
     editingId,
     isFinalized,
     totalStagedColumns,
-    success,
+    successes,
+    dismissSuccess,
     validation,
     canFinalize,
     canGenerate,
@@ -108,6 +109,8 @@ export default function AddTablePanel() {
     bulkImport,
     bulkStageTables,
     clearBulkImport,
+    filenamePattern,
+    setFilenamePattern,
     folder,
     pickFolder,
     refreshFolder,
@@ -213,8 +216,8 @@ export default function AddTablePanel() {
   const formLocked = isFinalized;
 
   const nextFileName = useMemo(
-    () => (parsed ? generateNextFileName(parsed.fileName) : ""),
-    [parsed]
+    () => (parsed ? generateNextFileName(parsed.fileName, filenamePattern) : ""),
+    [parsed, filenamePattern]
   );
 
   function handleFinalize() {
@@ -289,7 +292,7 @@ export default function AddTablePanel() {
     : stagedTables.length > 0
       ? "active"
       : "upcoming";
-  const step5State = success
+  const step5State = successes.length > 0
     ? "complete"
     : isFinalized || canFinalize
       ? "active"
@@ -360,7 +363,7 @@ export default function AddTablePanel() {
       </Card>
 
       {parsed && (
-        <Card step={2} stepState={step2State} title={t.sections.info.heading}>
+        <Card step={2} stepState={step2State} title={t.sections.info.heading} collapsible>
           <div className={styles.tileGrid}>
             <StatTile
               label={t.sections.info.entitiesLabel}
@@ -645,7 +648,12 @@ export default function AddTablePanel() {
       )}
 
       {parsed && (
-        <Card step={4} stepState={step4State} title={t.sections.staged.heading}>
+        <Card
+          step={4}
+          stepState={step4State}
+          title={t.sections.staged.heading}
+          collapsible={stagedTables.length > 0}
+        >
           {stagedTables.length === 0 ? (
             <div className={styles.stagedEmpty}>{t.sections.staged.empty}</div>
           ) : (
@@ -775,8 +783,37 @@ export default function AddTablePanel() {
 
           {canGenerate && nextFileName && (
             <div className={styles.nextFilePreview}>
-              {t.sections.finalize.nextFilePreview}{" "}
-              <code className={styles.mono}>{nextFileName}</code>
+              <span>
+                {t.sections.finalize.nextFilePreview}{" "}
+                <code className={styles.mono}>{nextFileName}</code>
+              </span>
+              {/* Pattern picker — segmented control. Persists to localStorage
+                  via the slice. The preview above re-renders as the pattern
+                  flips so users see the result before they click Generate. */}
+              <div
+                className={styles.filenamePatternRow}
+                role="radiogroup"
+                aria-label="Filename pattern"
+              >
+                <PatternButton
+                  active={filenamePattern === "v"}
+                  label="v1"
+                  title="Sequential — model_v1.xml"
+                  onClick={() => setFilenamePattern("v")}
+                />
+                <PatternButton
+                  active={filenamePattern === "v-padded"}
+                  label="v01"
+                  title="Zero-padded — model_v01.xml"
+                  onClick={() => setFilenamePattern("v-padded")}
+                />
+                <PatternButton
+                  active={filenamePattern === "timestamp"}
+                  label="date"
+                  title="ISO date — model_2026-05-05.xml"
+                  onClick={() => setFilenamePattern("timestamp")}
+                />
+              </div>
             </div>
           )}
 
@@ -787,12 +824,18 @@ export default function AddTablePanel() {
             <div className={styles.finalizeHint}>{t.sections.finalize.needFinalizeHint}</div>
           )}
 
-          {success && (
-            <GeneratedToast
-              key={success.filename}
-              filename={success.filename}
-              tablesAdded={success.tablesAdded}
-            />
+          {successes.length > 0 && (
+            <div className={styles.successStack}>
+              {successes.map((s) => (
+                <GeneratedToast
+                  key={s.id}
+                  filename={s.filename}
+                  tablesAdded={s.tablesAdded}
+                  generatedAt={s.generatedAt}
+                  onDismiss={() => dismissSuccess(s.id)}
+                />
+              ))}
+            </div>
           )}
         </Card>
       )}
@@ -867,6 +910,8 @@ export default function AddTablePanel() {
 interface GeneratedToastProps {
   filename: string;
   tablesAdded: number;
+  generatedAt: number;
+  onDismiss: () => void;
 }
 
 // Auto-dismiss window. Long enough that a user who looks away briefly
@@ -874,15 +919,16 @@ interface GeneratedToastProps {
 // clutter the page across subsequent generates.
 const TOAST_AUTO_DISMISS_MS = 6000;
 
-function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
-  // Capture the wall-clock time the user actually clicked Generate so the
-  // toast says "generated at 4:42 PM" rather than recomputing on rerender.
-  // The parent remounts this component (via key=filename) on each new
-  // generate, so this initializer runs exactly when we want it to.
-  const [generatedAt] = useState(() => new Date());
-  const [dismissed, setDismissed] = useState(false);
+function GeneratedToast({
+  filename,
+  tablesAdded,
+  generatedAt,
+  onDismiss,
+}: GeneratedToastProps) {
+  // generatedAt is the wall-clock timestamp captured by the slice when
+  // the generate fulfilled. We just format it; no local Date() needed.
   const [paused, setPaused] = useState(false);
-  const timeLabel = generatedAt.toLocaleTimeString(undefined, {
+  const timeLabel = new Date(generatedAt).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -891,12 +937,11 @@ function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
   // user has time to read or click the link/code copy. The effect re-arms
   // when paused flips off.
   useEffect(() => {
-    if (dismissed || paused) return;
-    const id = window.setTimeout(() => setDismissed(true), TOAST_AUTO_DISMISS_MS);
+    if (paused) return;
+    const id = window.setTimeout(onDismiss, TOAST_AUTO_DISMISS_MS);
     return () => window.clearTimeout(id);
-  }, [dismissed, paused]);
+  }, [paused, onDismiss]);
 
-  if (dismissed) return null;
   return (
     <div
       className={styles.success}
@@ -917,7 +962,7 @@ function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
       <button
         type="button"
         className={styles.successDismiss}
-        onClick={() => setDismissed(true)}
+        onClick={onDismiss}
         aria-label="Dismiss"
         title="Dismiss"
       >
@@ -1053,6 +1098,32 @@ function BulkImportResultPanel({
         </details>
       )}
     </div>
+  );
+}
+
+// Tiny segmented-control button used in the filename-pattern picker.
+function PatternButton({
+  active,
+  label,
+  title,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      title={title}
+      onClick={onClick}
+      className={`${styles.patternBtn} ${active ? styles.patternBtnActive : ""}`}
+    >
+      {label}
+    </button>
   );
 }
 

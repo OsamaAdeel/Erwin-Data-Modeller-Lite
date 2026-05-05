@@ -11,7 +11,11 @@ import {
   addEntityClassic,
   addEntityDMv9,
 } from "@/services/xml/emitter";
-import { generateNextFileName, serializeDoc } from "@/services/xml/serialize";
+import {
+  generateNextFileName,
+  serializeDoc,
+  type FilenamePattern,
+} from "@/services/xml/serialize";
 import { validateOfsaaXml, type OfsaaValidationResult } from "@/services/xml/validator";
 import { downloadBlob } from "@/utils/download";
 import type { NewColumnSpec, Variant } from "@/services/xml/types";
@@ -88,9 +92,45 @@ function addSampleRelationship(
 }
 
 export interface SuccessInfo {
+  /** Stable id used by the toast list to key + dismiss individually. */
+  id: string;
   tableName: string;       // last added; kept for single-table back-compat
   filename: string;
   tablesAdded: number;     // total staged tables written on generate
+  /** Wall-clock timestamp when the generate finished. The toast renders
+   *  it as "Generated at 4:42 PM". */
+  generatedAt: number;
+}
+
+// Cap on the toast queue. Older entries fall off when a new generate
+// arrives — three is enough that a quick burst of generates doesn't all
+// vanish, but few enough that the page doesn't fill with stale toasts.
+const MAX_SUCCESS_QUEUE = 3;
+
+// localStorage key for the user's preferred filename pattern. Persisted
+// across reloads so the user doesn't re-pick on every visit.
+const FILENAME_PATTERN_STORAGE_KEY = "erwin.filenamePattern";
+
+function readFilenamePattern(): FilenamePattern {
+  if (typeof window === "undefined") return "v";
+  try {
+    const stored = window.localStorage.getItem(FILENAME_PATTERN_STORAGE_KEY);
+    if (stored === "v" || stored === "v-padded" || stored === "timestamp") {
+      return stored;
+    }
+  } catch {
+    /* localStorage may be disabled */
+  }
+  return "v";
+}
+
+function writeFilenamePattern(p: FilenamePattern): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(FILENAME_PATTERN_STORAGE_KEY, p);
+  } catch {
+    /* ignore */
+  }
 }
 
 export interface ParsedMeta {
@@ -182,7 +222,9 @@ export interface AddTableState {
   editingId: string | null;
   // Finalization gate — Generate XML is only possible when true.
   isFinalized: boolean;
-  success?: SuccessInfo;
+  /** Generate-success toast queue. Each generate appends a new entry;
+   *  capped to MAX_SUCCESS_QUEUE so a burst doesn't pile up. */
+  successes: SuccessInfo[];
   // OFSAA validator dry-run result (Step 5 "Validate model" button).
   // null = no run yet; populated after a successful validateModel
   // dispatch and cleared when the staged set or parsed doc changes.
@@ -195,6 +237,9 @@ export interface AddTableState {
   // bulkStageTables; cleared by clearBulkImport, on resetSession, on a new
   // file load, or when the user types a new paste in the DDL textarea.
   bulkImport: BulkImportResult | null;
+  /** User-selected filename pattern for generated/preview output. Mirrored
+   *  to localStorage so it persists across reloads. */
+  filenamePattern: FilenamePattern;
 }
 
 function makeColumn(): NewColumnSpec {
@@ -229,11 +274,12 @@ const initialState: AddTableState = {
   stagedTables: [],
   editingId: null,
   isFinalized: false,
-  success: undefined,
+  successes: [],
   validationResult: null,
   validating: false,
   folder: initialFolderState,
   bulkImport: null,
+  filenamePattern: readFilenamePattern(),
 };
 
 type ThunkConfig = { state: { addTable: AddTableState }; rejectValue: string };
@@ -625,7 +671,7 @@ export interface PreviewInfo {
 export const previewXml = createAsyncThunk<PreviewInfo, void, ThunkConfig>(
   "addTable/previewXml",
   async (_, { getState, rejectWithValue }) => {
-    const { parsed, stagedTables } = getState().addTable;
+    const { parsed, stagedTables, filenamePattern } = getState().addTable;
     if (!parsed) return rejectWithValue("No XML loaded");
     if (stagedTables.length === 0) return rejectWithValue("No tables to add");
     const liveDoc = getParsedDoc(parsed.parseId);
@@ -651,7 +697,7 @@ export const previewXml = createAsyncThunk<PreviewInfo, void, ThunkConfig>(
 
     return {
       xml: serializeDoc(cloneDoc),
-      filename: generateNextFileName(parsed.fileName),
+      filename: generateNextFileName(parsed.fileName, filenamePattern),
       tablesAdded: stagedTables.length,
     };
   }
@@ -660,7 +706,7 @@ export const previewXml = createAsyncThunk<PreviewInfo, void, ThunkConfig>(
 export const generate = createAsyncThunk<SuccessInfo, void, ThunkConfig>(
   "addTable/generate",
   async (_, { getState, rejectWithValue }) => {
-    const { parsed, stagedTables, isFinalized } = getState().addTable;
+    const { parsed, stagedTables, isFinalized, filenamePattern } = getState().addTable;
     if (!parsed) return rejectWithValue("No XML loaded");
     if (!isFinalized) return rejectWithValue("Model is not finalized");
     if (stagedTables.length === 0) return rejectWithValue("No tables to add");
@@ -685,13 +731,15 @@ export const generate = createAsyncThunk<SuccessInfo, void, ThunkConfig>(
       throw err;
     }
 
-    const nextName = generateNextFileName(parsed.fileName);
+    const nextName = generateNextFileName(parsed.fileName, filenamePattern);
     const xml = serializeDoc(doc);
     downloadBlob(xml, nextName, "application/xml");
     return {
+      id: crypto.randomUUID(),
       tableName: lastName,
       filename: nextName,
       tablesAdded: stagedTables.length,
+      generatedAt: Date.now(),
     };
   }
 );
@@ -721,7 +769,7 @@ const slice = createSlice({
       state.stagedTables = [];
       state.editingId = null;
       state.isFinalized = false;
-      state.success = undefined;
+      state.successes = [];
       state.validationResult = null;
       state.validating = false;
       state.bulkImport = null;
@@ -744,7 +792,7 @@ const slice = createSlice({
     ) {
       if (state.isFinalized) return;
       state.validationResult = null;
-      state.success = undefined;
+      state.successes = [];
 
       const { parsed, parseErrors } = action.payload;
       const entityDict = state.parsed?.entityDict ?? new Map<string, string>();
@@ -941,7 +989,7 @@ const slice = createSlice({
       state.description = "";
       state.columns = [makeColumn()];
       state.editingId = null;
-      state.success = undefined;
+      state.successes = [];
     },
     deleteStagedTable(state, action: PayloadAction<string>) {
       state.validationResult = null;
@@ -964,7 +1012,7 @@ const slice = createSlice({
       state.description = t.description;
       // Deep-clone columns so editing the form doesn't mutate the staged copy.
       state.columns = t.columns.map((c) => ({ ...c }));
-      state.success = undefined;
+      state.successes = [];
     },
     cancelEdit(state) {
       state.editingId = null;
@@ -978,10 +1026,20 @@ const slice = createSlice({
     },
     unfinalize(state) {
       state.isFinalized = false;
-      state.success = undefined;
+      state.successes = [];
     },
+    /** Clear every queued success toast. */
     clearSuccess(state) {
-      state.success = undefined;
+      state.successes = [];
+    },
+    /** Dismiss a single toast by id (the × button on each toast). */
+    dismissSuccess(state, action: PayloadAction<string>) {
+      state.successes = state.successes.filter((s) => s.id !== action.payload);
+    },
+    /** Switch the output filename pattern. Mirrored to localStorage. */
+    setFilenamePattern(state, action: PayloadAction<FilenamePattern>) {
+      state.filenamePattern = action.payload;
+      writeFilenamePattern(action.payload);
     },
     clearValidationResult(state) {
       state.validationResult = null;
@@ -997,7 +1055,7 @@ const slice = createSlice({
       .addCase(loadFile.pending, (state) => {
         state.loading = true;
         state.loadError = undefined;
-        state.success = undefined;
+        state.successes = [];
       })
       .addCase(loadFile.fulfilled, (state, action) => {
         state.loading = false;
@@ -1009,7 +1067,7 @@ const slice = createSlice({
         state.stagedTables = [];
         state.editingId = null;
         state.isFinalized = false;
-        state.success = undefined;
+        state.successes = [];
         state.bulkImport = null;
       })
       .addCase(loadFile.rejected, (state, action) => {
@@ -1017,7 +1075,12 @@ const slice = createSlice({
         state.loadError = action.payload ?? action.error.message;
       })
       .addCase(generate.fulfilled, (state, action) => {
-        state.success = action.payload;
+        // Newest at the front so the most-recent generate appears at the
+        // top of the toast stack. Slice cap drops the oldest.
+        state.successes = [action.payload, ...state.successes].slice(
+          0,
+          MAX_SUCCESS_QUEUE
+        );
         if (state.parsed) {
           state.parsed.fileName = action.payload.filename;
           for (const t of state.stagedTables) {
@@ -1140,6 +1203,8 @@ export const {
   resetSession,
   bulkStageTables,
   clearBulkImport,
+  dismissSuccess,
+  setFilenamePattern,
   commitTable,
   deleteStagedTable,
   editStagedTable,

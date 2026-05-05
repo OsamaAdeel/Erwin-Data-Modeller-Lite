@@ -1,9 +1,24 @@
+// Outer wrapper holds the scroll fade. Tabs scroll horizontally inside.
 .bar {
+  position: relative;
   display: flex;
   gap: $space-1;
   border-bottom: 1px solid $border;
   margin-bottom: $space-5;
   overflow-x: auto;
+  // Mask the right edge with a soft fade so the user sees there's more
+  // content to scroll. CSS-only — driven by scrollbar gutter, no JS.
+  // Uses background-attachment: local on a gradient so the fade only
+  // shows when the content overflows.
+  background:
+    linear-gradient(to right, $bg, transparent 8px),
+    linear-gradient(to left, $bg, transparent 8px) right center,
+    linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent 12px),
+    linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent 12px) right center;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-size: 12px 100%, 12px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .tab {

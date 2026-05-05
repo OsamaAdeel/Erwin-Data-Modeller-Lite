@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import type { DataType, NewColumnSpec } from "@/services/xml/types";
 import { validate, type ValidationResult } from "./validation";
 import type { DdlParseError, ParsedDdl } from "@/services/ddl/ddlParser";
+import type { FilenamePattern } from "@/services/xml/serialize";
 import {
   addColumn as addColumnAction,
   bulkStageTables as bulkStageTablesAction,
@@ -12,6 +13,7 @@ import {
   clearValidationResult as clearValidationResultAction,
   commitTable as commitTableAction,
   deleteStagedTable as deleteStagedTableAction,
+  dismissSuccess as dismissSuccessAction,
   editStagedTable as editStagedTableAction,
   finalize as finalizeAction,
   forgetRecentFolder as forgetRecentFolderThunk,
@@ -28,6 +30,7 @@ import {
   resetForm as resetFormAction,
   resetSession as resetSessionAction,
   selectFolderFile as selectFolderFileThunk,
+  setFilenamePattern as setFilenamePatternAction,
   setDescription as setDescriptionAction,
   setTableName as setTableNameAction,
   unfinalize as unfinalizeAction,
@@ -58,11 +61,12 @@ export function useAddTable() {
   const stagedTables = useAppSelector((s) => s.addTable.stagedTables);
   const editingId = useAppSelector((s) => s.addTable.editingId);
   const isFinalized = useAppSelector((s) => s.addTable.isFinalized);
-  const success = useAppSelector((s) => s.addTable.success);
+  const successes = useAppSelector((s) => s.addTable.successes);
   const validationResult = useAppSelector((s) => s.addTable.validationResult);
   const validating = useAppSelector((s) => s.addTable.validating);
   const folder = useAppSelector((s) => s.addTable.folder);
   const bulkImport = useAppSelector((s) => s.addTable.bulkImport);
+  const filenamePattern = useAppSelector((s) => s.addTable.filenamePattern);
 
   const validation: ValidationResult = useMemo(
     () =>
@@ -215,6 +219,20 @@ export function useAddTable() {
     dispatch(clearBulkImportAction());
   }, [dispatch]);
 
+  const dismissSuccess = useCallback(
+    (id: string) => {
+      dispatch(dismissSuccessAction(id));
+    },
+    [dispatch]
+  );
+
+  const setFilenamePattern = useCallback(
+    (p: FilenamePattern) => {
+      dispatch(setFilenamePatternAction(p));
+    },
+    [dispatch]
+  );
+
   const pickFolder = useCallback(() => {
     void dispatch(pickFolderThunk());
   }, [dispatch]);
@@ -266,7 +284,8 @@ export function useAddTable() {
     editingId,
     isFinalized,
     totalStagedColumns,
-    success,
+    successes,
+    dismissSuccess,
     validation,
     validationResult,
     validating,
@@ -298,6 +317,8 @@ export function useAddTable() {
     bulkImport,
     bulkStageTables,
     clearBulkImport,
+    filenamePattern,
+    setFilenamePattern,
     pickFolder,
     refreshFolder,
     selectFolderFile,
