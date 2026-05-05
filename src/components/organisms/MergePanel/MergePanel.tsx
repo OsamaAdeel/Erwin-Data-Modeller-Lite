@@ -54,10 +54,14 @@ export default function MergePanel() {
     return out;
   }, [m.plan]);
 
+  // Step states drive the green ✓ on each step's badge.
+  const step1State = m.plan ? "complete" : "active";
+  const step2State = m.result ? "complete" : "active";
+
   return (
     <div className={styles.wrap}>
       {/* ---------- Step 1: Load ---------- */}
-      <Card step={1} title={t.load.heading}>
+      <Card step={1} stepState={step1State} title={t.load.heading}>
         {!m.source && !m.target && (
           <p className={styles.explainer}>{t.load.explainer}</p>
         )}
@@ -100,7 +104,7 @@ export default function MergePanel() {
 
       {/* ---------- Step 2: Pick ---------- */}
       {m.plan && (
-        <Card step={2} title={t.plan.heading}>
+        <Card step={2} stepState={step2State} title={t.plan.heading}>
           {noop && <div className={styles.noop}>{t.plan.noopBanner}</div>}
 
           {!noop && (
@@ -297,7 +301,7 @@ export default function MergePanel() {
 
       {/* ---------- Step 3: Result ---------- */}
       {m.result && (
-        <Card step={3} title={t.result.heading}>
+        <Card step={3} stepState="complete" title={t.result.heading}>
           <div className={styles.success}>
             <Badge tone="success">✓</Badge>
             <span>{t.result.addedTables.replace("{n}", String(m.result.counts.tablesAdded))}</span>

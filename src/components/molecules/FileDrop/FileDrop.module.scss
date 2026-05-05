@@ -15,7 +15,16 @@
   justify-content: center;
   gap: $space-1;
 
-  &:hover, &:focus { border-color: $primary; outline: none; background: $primary-soft; }
+  &:hover { border-color: $primary; background: $primary-soft; }
+  // Drop the default focus outline on mouse-driven focus, but keep a strong
+  // ring for keyboard users via :focus-visible.
+  &:focus { outline: none; }
+  &:focus-visible {
+    border-color: $primary;
+    background: $primary-soft;
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: 2px;
+  }
 }
 
 .over { border-color: $primary; background: $primary-soft; }
@@ -38,6 +47,12 @@
   border-top-color: $primary;
   animation: filedrop-spin 720ms linear infinite;
   margin-bottom: $space-2;
+
+  // Honor system reduced-motion. The aria-busy state on the dropzone +
+  // visible "Parsing XML…" hint already convey progress; the spin is decorative.
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 }
 
 @keyframes filedrop-spin {

@@ -17,7 +17,7 @@ export default function TopBar({ onHelp }: TopBarProps) {
         <ErwinLogo width={120} className={styles.logo} title={COMMON.appName} />
         <div className={styles.divider} aria-hidden />
         <div>
-          <div className={styles.title}>{COMMON.appName}</div>
+          <h1 className={styles.title}>{COMMON.appName}</h1>
           <div className={styles.tagline}>{COMMON.tagline}</div>
         </div>
       </div>

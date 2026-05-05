@@ -20,6 +20,23 @@
   display: grid;
   place-items: center;
   font-weight: 700;
+  // Smooth the swap between "active" and "complete" so the green flash
+  // when a prerequisite is met feels like a state change, not a glitch.
+  transition: background-color 200ms ease, color 200ms ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.stepComplete {
+  background: $green-soft;
+  color: $green;
+}
+
+.stepUpcoming {
+  background: $bg;
+  color: $text-dim;
 }
 
 .titleWrap { flex: 1; min-width: 0; }

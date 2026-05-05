@@ -56,7 +56,14 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-.title { font-weight: 600; }
+// Reset the user-agent <h1> margin/font-size so the title renders as it
+// did when this was a <div>. The semantic upgrade is invisible visually.
+.title {
+  margin: 0;
+  font-size: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+}
 .tagline {
   font-size: $fs-sm;
   opacity: 0.75;

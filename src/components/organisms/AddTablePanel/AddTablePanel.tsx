@@ -168,9 +168,26 @@ export default function AddTablePanel() {
     commitTable();
   }
 
+  // Visual state of each step's badge. Computed from the same data the cards
+  // gate their content on, so the green ✓ flips at the same moment the user's
+  // prerequisite is satisfied.
+  const step1State = parsed ? "complete" : "active";
+  const step2State = parsed ? "complete" : "upcoming";
+  const step3State = stagedTables.length > 0 ? "complete" : "active";
+  const step4State = isFinalized
+    ? "complete"
+    : stagedTables.length > 0
+      ? "active"
+      : "upcoming";
+  const step5State = success
+    ? "complete"
+    : isFinalized || canFinalize
+      ? "active"
+      : "upcoming";
+
   return (
     <div className={styles.wrap} onKeyDown={handlePanelKeyDown}>
-      <Card step={1} title={t.sections.upload.heading}>
+      <Card step={1} stepState={step1State} title={t.sections.upload.heading}>
         {parsed && !showUploaders ? (
           <div className={styles.loadedSummary}>
             <div className={styles.loadedSummaryBody}>
@@ -223,7 +240,7 @@ export default function AddTablePanel() {
       </Card>
 
       {parsed && (
-        <Card step={2} title={t.sections.info.heading}>
+        <Card step={2} stepState={step2State} title={t.sections.info.heading}>
           <div className={styles.tileGrid}>
             <StatTile
               label={t.sections.info.entitiesLabel}
@@ -264,7 +281,7 @@ export default function AddTablePanel() {
       )}
 
       {parsed && (
-        <Card step={3} title={t.sections.addForm.heading}>
+        <Card step={3} stepState={step3State} title={t.sections.addForm.heading}>
           <div className={`${styles.formBlock} ${formLocked ? styles.locked : ""}`}>
             <div className={styles.formGrid}>
               <Field
@@ -407,7 +424,7 @@ export default function AddTablePanel() {
       )}
 
       {parsed && (
-        <Card step={4} title={t.sections.staged.heading}>
+        <Card step={4} stepState={step4State} title={t.sections.staged.heading}>
           {stagedTables.length === 0 ? (
             <div className={styles.stagedEmpty}>{t.sections.staged.empty}</div>
           ) : (
@@ -475,7 +492,7 @@ export default function AddTablePanel() {
       )}
 
       {parsed && (
-        <Card step={5} title={t.sections.finalize.heading}>
+        <Card step={5} stepState={step5State} title={t.sections.finalize.heading}>
           <div className={styles.finalizeHead}>
             {/* key={String(isFinalized)} forces a remount on every flip
                 so the wrapper's one-shot CSS animation re-fires. */}

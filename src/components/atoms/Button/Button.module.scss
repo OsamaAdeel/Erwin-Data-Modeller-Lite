@@ -10,6 +10,11 @@
   white-space: nowrap;
   text-decoration: none;
   @include clickable;
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: 2px;
+  }
 }
 
 .s-sm { padding: 6px 12px;  font-size: $fs-sm; }
@@ -39,6 +44,9 @@
   background: $red;
   color: #fff;
   &:hover:not(:disabled) { filter: brightness(0.92); }
+  &:focus-visible {
+    outline-color: rgba(var(--color-red-rgb), var(--focus-ring-alpha-strong));
+  }
 }
 
 .full { width: 100%; }
