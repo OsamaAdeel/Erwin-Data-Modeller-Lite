@@ -15,10 +15,13 @@ import ValidationPanel from "@/components/molecules/ValidationPanel";
 import XmlPreviewModal from "@/components/molecules/XmlPreviewModal";
 import { WARNING_MESSAGES } from "@/features/addTable/validation";
 import { useAddTable } from "@/features/addTable/useAddTable";
-import type { StagedTable } from "@/features/addTable/useAddTable";
+import type {
+  BulkImportResult,
+  StagedTable,
+} from "@/features/addTable/useAddTable";
 import { collectFullModel } from "@/services/xml/model";
 import { generateNextFileName } from "@/services/xml/serialize";
-import { parseOracleDdl } from "@/services/ddl/ddlParser";
+import { parseOracleDdl, parseOracleDdlMulti } from "@/services/ddl/ddlParser";
 import { getParsedDoc } from "@/store/refs";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
@@ -102,6 +105,9 @@ export default function AddTablePanel() {
     validating,
     replaceColumns,
     resetSession,
+    bulkImport,
+    bulkStageTables,
+    clearBulkImport,
     folder,
     pickFolder,
     refreshFolder,
@@ -499,21 +505,40 @@ export default function AddTablePanel() {
                     setDdlWarnings([]);
                   }}
                   onParse={() => {
-                    const result = parseOracleDdl(ddlText);
-                    if (result.columns.length === 0) {
-                      setDdlWarnings([
-                        "No columns parsed from this DDL.",
-                        ...result.warnings,
-                      ]);
+                    // Multi-statement first: a single paste can hold many
+                    // CREATE TABLE blocks. We branch by count:
+                    //   0 tables → error feedback in the paste area
+                    //   1 table  → keep the existing "fill form" UX
+                    //   2+ tables → bulk-stage all valid tables and show
+                    //              the result panel below the form
+                    const multi = parseOracleDdlMulti(ddlText);
+                    if (multi.tables.length === 0) {
+                      const messages = multi.parseErrors.length
+                        ? multi.parseErrors.map(
+                            (e) => `Couldn't parse: ${e.snippet} — ${e.message}`
+                          )
+                        : ["No CREATE TABLE statements found in the input."];
+                      setDdlWarnings(messages);
                       return;
                     }
-                    if (result.tableName && !tableName.trim()) {
-                      setTableName(result.tableName);
+                    if (multi.tables.length === 1 && multi.parseErrors.length === 0) {
+                      const result = parseOracleDdl(ddlText);
+                      if (result.tableName && !tableName.trim()) {
+                        setTableName(result.tableName);
+                      }
+                      replaceColumns(result.columns);
+                      setDdlMode(false);
+                      setDdlText("");
+                      setDdlWarnings(result.warnings);
+                      return;
                     }
-                    replaceColumns(result.columns);
+                    bulkStageTables({
+                      parsed: multi.tables,
+                      parseErrors: multi.parseErrors,
+                    });
                     setDdlMode(false);
                     setDdlText("");
-                    setDdlWarnings(result.warnings);
+                    setDdlWarnings([]);
                   }}
                 />
               ) : (
@@ -607,6 +632,14 @@ export default function AddTablePanel() {
                 </Button>
               )}
             </div>
+
+            {bulkImport && (
+              <BulkImportResultPanel
+                key={bulkImport.ranAt}
+                result={bulkImport}
+                onDismiss={clearBulkImport}
+              />
+            )}
           </div>
         </Card>
       )}
@@ -890,6 +923,106 @@ function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
       >
         ×
       </button>
+    </div>
+  );
+}
+
+// Inline summary of the most recent bulk-DDL import. Mounted with
+// key={ranAt} so each new run gets a fresh aria-live announcement.
+function BulkImportResultPanel({
+  result,
+  onDismiss,
+}: {
+  result: BulkImportResult;
+  onDismiss: () => void;
+}) {
+  const addedCount = result.added.length;
+  const errorCount = result.errors.length;
+  const parseErrorCount = result.parseErrors.length;
+  const allBad = addedCount === 0 && (errorCount > 0 || parseErrorCount > 0);
+  const hasIssues = errorCount > 0 || parseErrorCount > 0;
+  return (
+    <div
+      className={`${styles.bulkResult} ${allBad ? styles.bulkResultFail : styles.bulkResultOk}`}
+      role={allBad ? "alert" : "status"}
+      aria-live="polite"
+    >
+      <div className={styles.bulkResultHead}>
+        <Badge tone={allBad ? "danger" : "success"}>{allBad ? "!" : "✓"}</Badge>
+        <span>
+          {addedCount > 0 && (
+            <>
+              Imported <strong>{addedCount}</strong> table
+              {addedCount === 1 ? "" : "s"}
+              {hasIssues ? ". " : "."}
+            </>
+          )}
+          {errorCount > 0 && (
+            <>
+              <strong>{errorCount}</strong> skipped
+              {parseErrorCount > 0 ? ", " : "."}
+            </>
+          )}
+          {parseErrorCount > 0 && (
+            <>
+              <strong>{parseErrorCount}</strong> couldn't parse.
+            </>
+          )}
+        </span>
+        <button
+          type="button"
+          className={styles.bulkResultDismiss}
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          title="Dismiss"
+        >
+          ×
+        </button>
+      </div>
+
+      {addedCount > 0 && (
+        <details className={styles.bulkResultDetails}>
+          <summary>Show imported tables ({addedCount})</summary>
+          <ul className={styles.bulkResultList}>
+            {result.added.map((a) => (
+              <li key={a.name}>
+                <code className={styles.mono}>{a.name}</code>
+                <span className={styles.bulkResultMeta}>
+                  {" — "}
+                  {a.columnCount} column{a.columnCount === 1 ? "" : "s"}
+                  {a.pkCount > 0 ? `, ${a.pkCount} PK` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {hasIssues && (
+        <details className={styles.bulkResultDetails} open>
+          <summary>Show issues ({errorCount + parseErrorCount})</summary>
+          <ul className={styles.bulkResultList}>
+            {result.errors.map((e, i) => (
+              <li key={`err-${i}`} className={styles.bulkResultIssue}>
+                <code className={styles.mono}>{e.name}</code>
+                <ul>
+                  {e.reasons.map((r, j) => (
+                    <li key={j}>{r}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+            {result.parseErrors.map((p, i) => (
+              <li key={`parse-${i}`} className={styles.bulkResultIssue}>
+                <code className={styles.mono}>{p.snippet || "(unnamed statement)"}</code>
+                <ul>
+                  <li>{p.message}</li>
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

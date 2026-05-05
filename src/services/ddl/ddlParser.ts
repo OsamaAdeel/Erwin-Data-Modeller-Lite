@@ -166,3 +166,81 @@ function mapDataType(raw: string): DataType | null {
 function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 1) + "…" : s;
 }
+
+// ---------------------------------------------------------------------------
+// Multi-statement parsing — bulk DDL import
+// ---------------------------------------------------------------------------
+
+export interface DdlParseError {
+  /** A short prefix of the offending statement, for display. */
+  snippet: string;
+  message: string;
+}
+
+export interface MultiParsedDdl {
+  /** Successfully reduced to (table name, columns). One entry per statement. */
+  tables: ParsedDdl[];
+  /** Statements we couldn't reduce — typically not CREATE TABLE, or empty. */
+  parseErrors: DdlParseError[];
+}
+
+/**
+ * Split a DDL paste into individual statements on `;` at parenthesis-depth
+ * 0 — the natural boundary between Oracle DDL statements. Inline parens in
+ * type specs are tracked so a stray `;` inside a `(...)` (which Oracle
+ * doesn't allow but defensive code is cheap) doesn't split the statement.
+ * Trailing whitespace-only segments are dropped.
+ */
+export function splitDdlStatements(input: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let buf = "";
+  for (const ch of input) {
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    if (ch === ";" && depth === 0) {
+      const trimmed = buf.trim();
+      if (trimmed) out.push(trimmed);
+      buf = "";
+    } else {
+      buf += ch;
+    }
+  }
+  const trailing = buf.trim();
+  if (trailing) out.push(trailing);
+  return out;
+}
+
+/**
+ * Parse a paste containing one or more `CREATE TABLE` statements. Each
+ * statement is split, recognised, and routed to `parseOracleDdl`. Anything
+ * that isn't a CREATE TABLE (CREATE INDEX, ALTER, COMMENT, …) becomes a
+ * parse error rather than a hard fail — the bulk-import flow uses these
+ * to surface "skipped" entries to the user.
+ */
+export function parseOracleDdlMulti(input: string): MultiParsedDdl {
+  const statements = splitDdlStatements(input);
+  const tables: ParsedDdl[] = [];
+  const parseErrors: DdlParseError[] = [];
+
+  for (const stmt of statements) {
+    if (!/CREATE\s+(?:GLOBAL\s+TEMPORARY\s+)?TABLE\b/i.test(stmt)) {
+      parseErrors.push({
+        snippet: truncate(stmt, 80),
+        message: "Not a CREATE TABLE statement — skipped.",
+      });
+      continue;
+    }
+    const r = parseOracleDdl(stmt);
+    if (!r.tableName || r.columns.length === 0) {
+      parseErrors.push({
+        snippet: r.tableName ?? truncate(stmt, 80),
+        message: "Couldn't extract a table name and column list.",
+      });
+      continue;
+    }
+    tables.push(r);
+  }
+
+  return { tables, parseErrors };
+}
