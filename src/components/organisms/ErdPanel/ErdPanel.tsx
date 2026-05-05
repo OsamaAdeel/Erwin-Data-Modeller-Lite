@@ -284,6 +284,8 @@ export default function ErdPanel() {
             <span>{t.view.legendHover}</span>
             <span>·</span>
             <span>Click an entity to see all columns</span>
+            <span>·</span>
+            <span>Tab into the canvas to use +/− to zoom, 0 to fit, arrows to pan</span>
           </div>
         </Card>
       )}

@@ -1,4 +1,5 @@
 import {
+  KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
   useCallback,
@@ -29,6 +30,12 @@ export interface ErdViewportProps {
 
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 3;
+
+// Pan step for arrow keys, in screen pixels at the current zoom. Shift
+// quadruples the step so power users can sweep the canvas without having
+// to hold the key for several seconds.
+const PAN_STEP = 80;
+const PAN_STEP_LARGE = PAN_STEP * 3;
 
 const MINIMAP_STORAGE_KEY = "erwin.erd.minimap";
 
@@ -166,6 +173,54 @@ export default function ErdViewport({
     setTy(cy - wy * next);
   };
 
+  // Keyboard navigation. Mirrors the controls cluster (zoom in/out, fit)
+  // plus arrow-key panning so users without a pointer device can still
+  // explore the diagram. Shift makes each pan step ~3x larger.
+  function handleKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    // Don't hijack keys aimed at a child input — none today, but cheap
+    // future-proofing if the controls cluster ever gains one.
+    const target = e.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+      return;
+    }
+    const step = e.shiftKey ? PAN_STEP_LARGE : PAN_STEP;
+    switch (e.key) {
+      case "+":
+      case "=":
+        e.preventDefault();
+        zoomBy(1.2);
+        break;
+      case "-":
+      case "_":
+        e.preventDefault();
+        zoomBy(1 / 1.2);
+        break;
+      case "0":
+        e.preventDefault();
+        fit();
+        break;
+      // Arrow direction maps to which world edge moves into view: ArrowLeft
+      // wants more world content to the LEFT, which means translating the
+      // world to the RIGHT — i.e. tx increases.
+      case "ArrowLeft":
+        e.preventDefault();
+        setTx((t) => t + step);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        setTx((t) => t - step);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setTy((t) => t + step);
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        setTy((t) => t - step);
+        break;
+    }
+  }
+
   const toggleMinimap = () => {
     setShowMinimap((on) => {
       const next = !on;
@@ -186,6 +241,14 @@ export default function ErdViewport({
       <div
         ref={containerRef}
         className={styles.canvas}
+        // tabIndex makes the canvas a keyboard target so +/-/0/arrows work
+        // once the user Tabs into it. The role is descriptive; we don't
+        // claim "img" because the SVG inside has its own group children
+        // with aria-labels.
+        tabIndex={0}
+        role="application"
+        aria-label="ERD diagram canvas. Use plus / minus to zoom, 0 to fit, arrow keys to pan."
+        onKeyDown={handleKeyDown}
         onWheel={handleWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
