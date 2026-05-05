@@ -4,6 +4,15 @@
   gap: $space-5;
 }
 
+// Stack of generate-success toasts. Each toast is a single .success row;
+// the stack lays them out vertically with a small gap.
+.successStack {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin-top: $space-3;
+}
+
 // Bulk-DDL import summary — banner-style panel rendered after the form
 // when the user pastes 2+ CREATE TABLE statements at once. Tone shifts
 // based on whether anything actually landed: green when at least one
@@ -605,6 +614,47 @@
   margin-top: $space-2;
   color: $text-muted;
   font-size: $fs-sm;
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+// Filename pattern segmented control. Three small chips that flip the
+// preview above without triggering a generate. State persists via slice
+// + localStorage.
+.filenamePatternRow {
+  display: inline-flex;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  overflow: hidden;
+  background: $surface;
+}
+
+.patternBtn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid $border;
+  font-size: $fs-xs;
+  font-family: $font-mono;
+  color: $text-muted;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:last-child { border-right: 0; }
+  &:hover { background: $primary-soft; color: $primary; }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: -1px;
+  }
+}
+
+.patternBtnActive,
+.patternBtnActive:hover {
+  background: $primary;
+  color: #fff;
 }
 
 .success {

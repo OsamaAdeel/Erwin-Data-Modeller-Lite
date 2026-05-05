@@ -49,3 +49,34 @@
 
 .actions { display: flex; gap: $space-2; }
 .body    { display: flex; flex-direction: column; gap: $space-4; }
+
+// Chevron toggle for collapsible cards. Sits to the right of actions in
+// the header. Rotated 180° when collapsed.
+.collapseToggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid $border;
+  background: $surface;
+  border-radius: $radius-sm;
+  color: $text-muted;
+  cursor: pointer;
+  transition: transform 200ms ease, color 120ms ease, border-color 120ms ease;
+
+  &:hover { color: $text; border-color: $border-2; }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+}
+
+.collapseToggleCollapsed {
+  transform: rotate(180deg);
+}

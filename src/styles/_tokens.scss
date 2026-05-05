@@ -31,7 +31,10 @@
   // Text
   --color-text: #1B2133;
   --color-text-muted: #6B7487;
-  --color-text-dim: #9098A8;
+  // Bumped from #9098A8 (~3:1 on white) to a darker hue that hits the
+  // ~4.5:1 WCAG AA threshold for body text. Decorative usages still read
+  // softer than -muted because of size/weight context.
+  --color-text-dim: #6F7889;
 
   // Status
   --color-green: #16A34A;

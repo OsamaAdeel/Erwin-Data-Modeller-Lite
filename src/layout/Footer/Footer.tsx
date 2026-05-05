@@ -9,9 +9,9 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className={styles.left}>
         <span>© {year} Erwin Data Modeller Lite</span>
-        <span className={styles.dot} aria-hidden>·</span>
+        <span className={styles.dot} aria-hidden />
         <span>{COMMON.footer.openSource}</span>
-        <span className={styles.dot} aria-hidden>·</span>
+        <span className={styles.dot} aria-hidden />
         <span className={styles.version} title={`Version ${pkg.version}`}>
           v{pkg.version}
         </span>
