@@ -929,6 +929,7 @@ function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
 
 // Inline summary of the most recent bulk-DDL import. Mounted with
 // key={ranAt} so each new run gets a fresh aria-live announcement.
+const BULK_RESULT_AUTO_DISMISS_MS = 6000;
 function BulkImportResultPanel({
   result,
   onDismiss,
@@ -941,11 +942,27 @@ function BulkImportResultPanel({
   const parseErrorCount = result.parseErrors.length;
   const allBad = addedCount === 0 && (errorCount > 0 || parseErrorCount > 0);
   const hasIssues = errorCount > 0 || parseErrorCount > 0;
+  // Pure success — no errors, no parse failures, at least one table
+  // imported — auto-fades after a beat. Anything with issues stays put
+  // until the user explicitly dismisses; those need attention.
+  const isPureSuccess = addedCount > 0 && !hasIssues;
+  // Hover/focus pause — same convention as GeneratedToast.
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (!isPureSuccess || paused) return;
+    const id = window.setTimeout(onDismiss, BULK_RESULT_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(id);
+  }, [isPureSuccess, paused, onDismiss]);
+
   return (
     <div
       className={`${styles.bulkResult} ${allBad ? styles.bulkResultFail : styles.bulkResultOk}`}
       role={allBad ? "alert" : "status"}
       aria-live="polite"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
     >
       <div className={styles.bulkResultHead}>
         <Badge tone={allBad ? "danger" : "success"}>{allBad ? "!" : "✓"}</Badge>
@@ -981,7 +998,12 @@ function BulkImportResultPanel({
       </div>
 
       {addedCount > 0 && (
-        <details className={styles.bulkResultDetails}>
+        <details
+          className={styles.bulkResultDetails}
+          // Auto-open when at least one imported table has parser warnings
+          // so silently-dropped columns aren't hidden behind a click.
+          open={result.added.some((a) => a.warnings.length > 0)}
+        >
           <summary>Show imported tables ({addedCount})</summary>
           <ul className={styles.bulkResultList}>
             {result.added.map((a) => (
@@ -992,6 +1014,13 @@ function BulkImportResultPanel({
                   {a.columnCount} column{a.columnCount === 1 ? "" : "s"}
                   {a.pkCount > 0 ? `, ${a.pkCount} PK` : ""}
                 </span>
+                {a.warnings.length > 0 && (
+                  <ul className={styles.bulkResultAddedWarnings}>
+                    {a.warnings.map((w, i) => (
+                      <li key={i}>⚠ {w}</li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
@@ -1067,8 +1096,9 @@ function DdlPasteArea({
   return (
     <div className={styles.ddlPaste}>
       <div className={styles.ddlIntro}>
-        Paste a <code>CREATE TABLE</code> statement (or just the column
-        list). Common Oracle types are recognised; lines we can't parse
+        Paste a single <code>CREATE TABLE</code> statement to fill the form,
+        or paste two or more semicolon-separated statements to bulk-import
+        them. Common Oracle types are recognised; lines we can't parse
         become warnings.
       </div>
       <Textarea

@@ -146,6 +146,10 @@ export interface BulkImportAdded {
   name: string;
   columnCount: number;
   pkCount: number;
+  /** Per-table parser warnings (e.g. "Unknown type 'XMLTYPE' for column X").
+   *  Surfaced under the "imported tables" details so users learn about
+   *  silently-dropped columns even on a successful bulk import. */
+  warnings: string[];
 }
 
 export interface BulkImportError {
@@ -830,6 +834,7 @@ const slice = createSlice({
           name: trimmed,
           columnCount: cleanCols.length,
           pkCount: cleanCols.filter((c) => c.pk).length,
+          warnings: t.warnings,
         });
       }
 
