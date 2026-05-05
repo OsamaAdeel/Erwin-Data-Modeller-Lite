@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseOracleDdl } from "@/services/ddl/ddlParser";
+import {
+  parseOracleDdl,
+  parseOracleDdlMulti,
+  splitDdlStatements,
+} from "@/services/ddl/ddlParser";
 
 describe("parseOracleDdl — bare-identifier baseline", () => {
   it("parses a simple unquoted CREATE TABLE", () => {
@@ -112,6 +116,93 @@ describe("parseOracleDdl — Oracle export quirks", () => {
     expect(r.columns.find((c) => c.name === "A")?.pk).toBe(true);
     expect(r.columns.find((c) => c.name === "B")?.pk).toBe(true);
     expect(r.columns.find((c) => c.name === "C")?.pk).toBe(false);
+  });
+});
+
+describe("splitDdlStatements", () => {
+  it("returns one entry for a single statement", () => {
+    expect(splitDdlStatements("CREATE TABLE FOO (A NUMBER);"))
+      .toEqual(["CREATE TABLE FOO (A NUMBER)"]);
+  });
+
+  it("splits two statements on a top-level semicolon", () => {
+    const ddl = `CREATE TABLE A (X NUMBER); CREATE TABLE B (Y NUMBER);`;
+    expect(splitDdlStatements(ddl)).toEqual([
+      "CREATE TABLE A (X NUMBER)",
+      "CREATE TABLE B (Y NUMBER)",
+    ]);
+  });
+
+  it("ignores semicolons inside parens (defensive)", () => {
+    // Oracle would reject this DDL, but a paren-aware splitter shouldn't
+    // be fooled by the stray inner `;`.
+    const ddl = `CREATE TABLE A (X VARCHAR2(50; 1)); CREATE TABLE B (Y NUMBER);`;
+    expect(splitDdlStatements(ddl)).toHaveLength(2);
+  });
+
+  it("handles a missing trailing semicolon", () => {
+    const ddl = `CREATE TABLE A (X NUMBER)`;
+    expect(splitDdlStatements(ddl)).toEqual([ddl]);
+  });
+
+  it("drops empty / whitespace-only segments", () => {
+    expect(splitDdlStatements(";; ;\n;")).toEqual([]);
+  });
+});
+
+describe("parseOracleDdlMulti", () => {
+  it("parses two CREATE TABLE statements separately", () => {
+    const ddl = `
+      CREATE TABLE CUSTOMER_MASTER (
+        CUSTOMER_ID NUMBER PRIMARY KEY,
+        NAME VARCHAR2(100)
+      );
+      CREATE TABLE ACCOUNT_MASTER (
+        ACCOUNT_ID NUMBER PRIMARY KEY,
+        CUSTOMER_ID NUMBER,
+        BALANCE NUMBER
+      );
+    `;
+    const r = parseOracleDdlMulti(ddl);
+    expect(r.parseErrors).toEqual([]);
+    expect(r.tables).toHaveLength(2);
+    expect(r.tables.map((t) => t.tableName)).toEqual([
+      "CUSTOMER_MASTER",
+      "ACCOUNT_MASTER",
+    ]);
+    expect(r.tables[0].columns.find((c) => c.name === "CUSTOMER_ID")?.pk).toBe(true);
+    expect(r.tables[1].columns.find((c) => c.name === "ACCOUNT_ID")?.pk).toBe(true);
+  });
+
+  it("reports non-CREATE-TABLE statements as parse errors", () => {
+    const ddl = `
+      CREATE TABLE A (X NUMBER);
+      CREATE INDEX IDX_A ON A (X);
+      CREATE TABLE B (Y NUMBER);
+    `;
+    const r = parseOracleDdlMulti(ddl);
+    expect(r.tables.map((t) => t.tableName)).toEqual(["A", "B"]);
+    expect(r.parseErrors).toHaveLength(1);
+    expect(r.parseErrors[0].message).toMatch(/Not a CREATE TABLE/);
+  });
+
+  it("reports CREATE TABLE statements that yield no columns", () => {
+    // The body has only a CONSTRAINT — no columns to extract.
+    const ddl = `
+      CREATE TABLE A (
+        CONSTRAINT FK FOREIGN KEY (X) REFERENCES B(X)
+      );
+      CREATE TABLE B (Y NUMBER);
+    `;
+    const r = parseOracleDdlMulti(ddl);
+    expect(r.tables.map((t) => t.tableName)).toEqual(["B"]);
+    expect(r.parseErrors).toHaveLength(1);
+  });
+
+  it("returns empty result for empty input", () => {
+    const r = parseOracleDdlMulti("   \n\t  ");
+    expect(r.tables).toEqual([]);
+    expect(r.parseErrors).toEqual([]);
   });
 });
 

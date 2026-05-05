@@ -1,5 +1,10 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { MAX_COLUMNS_PER_TABLE } from "@/services/ddl/oracleParser";
+import {
+  MAX_COLUMNS_PER_TABLE,
+  validateColumnSize,
+  validateIdentifier,
+} from "@/services/ddl/oracleParser";
+import type { DdlParseError, ParsedDdl } from "@/services/ddl/ddlParser";
 import { XmlParseError, parseFile } from "@/services/xml/parser";
 import {
   EmitterError,
@@ -133,6 +138,32 @@ export interface RecentFolderMeta {
   lastUsedAt: number;
 }
 
+// ---------------------------------------------------------------------------
+// Bulk DDL import — multi-CREATE-TABLE result shape
+// ---------------------------------------------------------------------------
+
+export interface BulkImportAdded {
+  name: string;
+  columnCount: number;
+  pkCount: number;
+}
+
+export interface BulkImportError {
+  /** Best-effort name; "(unnamed)" if the parser couldn't extract one. */
+  name: string;
+  reasons: string[];
+}
+
+export interface BulkImportResult {
+  added: BulkImportAdded[];
+  errors: BulkImportError[];
+  /** Statements that didn't reduce to a CREATE TABLE shape at all. */
+  parseErrors: DdlParseError[];
+  /** Wall-clock timestamp of the run — used as a key so the result panel
+   *  re-announces on each new dispatch even if the counts are identical. */
+  ranAt: number;
+}
+
 export interface AddTableState {
   parsed: ParsedMeta | null;
   loadError?: string;
@@ -156,6 +187,10 @@ export interface AddTableState {
   // Preferred-folder state. Lives alongside the rest of Step-1 state so the
   // folder, the auto-selected file, and the parsed doc stay in sync.
   folder: PreferredFolderState;
+  // Result of the most recent bulk DDL import. Populated by
+  // bulkStageTables; cleared by clearBulkImport, on resetSession, on a new
+  // file load, or when the user types a new paste in the DDL textarea.
+  bulkImport: BulkImportResult | null;
 }
 
 function makeColumn(): NewColumnSpec {
@@ -194,6 +229,7 @@ const initialState: AddTableState = {
   validationResult: null,
   validating: false,
   folder: initialFolderState,
+  bulkImport: null,
 };
 
 type ThunkConfig = { state: { addTable: AddTableState }; rejectValue: string };
@@ -684,7 +720,129 @@ const slice = createSlice({
       state.success = undefined;
       state.validationResult = null;
       state.validating = false;
+      state.bulkImport = null;
       // state.folder is intentionally preserved.
+    },
+    /**
+     * Bulk-import a list of `parseOracleDdlMulti` results. Each parsed
+     * table is validated against the loaded model, the already-staged
+     * names, and the rest of this batch (so two CREATE TABLEs for the
+     * same name in one paste don't both land). Valid tables are pushed
+     * to stagedTables; the per-table outcome plus any pre-validated
+     * parse errors are stashed on `state.bulkImport` for the UI.
+     */
+    bulkStageTables(
+      state,
+      action: PayloadAction<{
+        parsed: ParsedDdl[];
+        parseErrors: DdlParseError[];
+      }>
+    ) {
+      if (state.isFinalized) return;
+      state.validationResult = null;
+      state.success = undefined;
+
+      const { parsed, parseErrors } = action.payload;
+      const entityDict = state.parsed?.entityDict ?? new Map<string, string>();
+      const stagedNames = new Set(
+        state.stagedTables.map((t) => t.table_name.toUpperCase())
+      );
+      // Names claimed by earlier valid entries in THIS batch. Prevents two
+      // identical CREATE TABLEs in one paste from both landing.
+      const seenInBatch = new Set<string>();
+
+      const added: BulkImportAdded[] = [];
+      const errors: BulkImportError[] = [];
+
+      for (const t of parsed) {
+        const reasons: string[] = [];
+        const trimmed = (t.tableName ?? "").trim();
+        const upper = trimmed.toUpperCase();
+
+        if (!trimmed) {
+          errors.push({ name: "(unnamed)", reasons: ["No table name parsed."] });
+          continue;
+        }
+
+        const idCheck = validateIdentifier(trimmed, "table name");
+        if (!idCheck.ok && idCheck.error) reasons.push(idCheck.error);
+        if (entityDict.has(upper)) {
+          reasons.push(`"${trimmed}" already exists in the loaded model.`);
+        }
+        if (stagedNames.has(upper)) {
+          reasons.push(`"${trimmed}" is already queued in this session.`);
+        }
+        if (seenInBatch.has(upper)) {
+          reasons.push(`"${trimmed}" appears more than once in this paste.`);
+        }
+        if (t.columns.length > MAX_COLUMNS_PER_TABLE) {
+          reasons.push(
+            `${t.columns.length} columns exceeds the Oracle limit of ${MAX_COLUMNS_PER_TABLE}.`
+          );
+        }
+
+        const seenCols = new Set<string>();
+        const cleanCols: NewColumnSpec[] = [];
+        for (const c of t.columns) {
+          const cn = c.name.trim();
+          if (!cn) {
+            reasons.push("A column has no name.");
+            continue;
+          }
+          const cidCheck = validateIdentifier(cn, "column name");
+          if (!cidCheck.ok && cidCheck.error) {
+            reasons.push(`Column "${cn}": ${cidCheck.error}`);
+            continue;
+          }
+          const key = cn.toUpperCase();
+          if (seenCols.has(key)) {
+            reasons.push(`Duplicate column "${cn}".`);
+            continue;
+          }
+          seenCols.add(key);
+          const sizeErr = validateColumnSize(c);
+          if (sizeErr) {
+            reasons.push(`Column "${cn}": ${sizeErr}`);
+            continue;
+          }
+          cleanCols.push({ ...c, name: cn });
+        }
+        if (cleanCols.length === 0 && reasons.length === 0) {
+          reasons.push("No valid columns parsed.");
+        }
+
+        if (reasons.length > 0) {
+          errors.push({ name: trimmed, reasons });
+          continue;
+        }
+
+        // Claim the name in the batch and push to staged.
+        seenInBatch.add(upper);
+        const staged: StagedTable = {
+          id: crypto.randomUUID(),
+          table_name: trimmed,
+          description: "",
+          columns: cleanCols,
+        };
+        state.stagedTables.push(staged);
+        stagedNames.add(upper);
+        added.push({
+          name: trimmed,
+          columnCount: cleanCols.length,
+          pkCount: cleanCols.filter((c) => c.pk).length,
+        });
+      }
+
+      state.bulkImport = {
+        added,
+        errors,
+        parseErrors,
+        ranAt: Date.now(),
+      };
+    },
+    /** Clears the last bulk-import summary panel (Dismiss button). */
+    clearBulkImport(state) {
+      state.bulkImport = null;
     },
     setTableName(state, action: PayloadAction<string>) {
       state.tableName = action.payload;
@@ -847,6 +1005,7 @@ const slice = createSlice({
         state.editingId = null;
         state.isFinalized = false;
         state.success = undefined;
+        state.bulkImport = null;
       })
       .addCase(loadFile.rejected, (state, action) => {
         state.loading = false;
@@ -974,6 +1133,8 @@ export const {
   updateColumn,
   resetForm,
   resetSession,
+  bulkStageTables,
+  clearBulkImport,
   commitTable,
   deleteStagedTable,
   editStagedTable,

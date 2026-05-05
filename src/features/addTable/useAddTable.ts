@@ -2,9 +2,12 @@ import { useCallback, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/store";
 import type { DataType, NewColumnSpec } from "@/services/xml/types";
 import { validate, type ValidationResult } from "./validation";
+import type { DdlParseError, ParsedDdl } from "@/services/ddl/ddlParser";
 import {
   addColumn as addColumnAction,
+  bulkStageTables as bulkStageTablesAction,
   cancelEdit as cancelEditAction,
+  clearBulkImport as clearBulkImportAction,
   clearFolder as clearFolderAction,
   clearValidationResult as clearValidationResultAction,
   commitTable as commitTableAction,
@@ -33,6 +36,9 @@ import {
   validateModel as validateModelThunk,
 } from "./addTableSlice";
 export type {
+  BulkImportAdded,
+  BulkImportError,
+  BulkImportResult,
   FolderFileMeta,
   PreferredFolderState,
   PreviewInfo,
@@ -56,6 +62,7 @@ export function useAddTable() {
   const validationResult = useAppSelector((s) => s.addTable.validationResult);
   const validating = useAppSelector((s) => s.addTable.validating);
   const folder = useAppSelector((s) => s.addTable.folder);
+  const bulkImport = useAppSelector((s) => s.addTable.bulkImport);
 
   const validation: ValidationResult = useMemo(
     () =>
@@ -197,6 +204,17 @@ export function useAddTable() {
     dispatch(resetSessionAction());
   }, [dispatch]);
 
+  const bulkStageTables = useCallback(
+    (payload: { parsed: ParsedDdl[]; parseErrors: DdlParseError[] }) => {
+      dispatch(bulkStageTablesAction(payload));
+    },
+    [dispatch]
+  );
+
+  const clearBulkImport = useCallback(() => {
+    dispatch(clearBulkImportAction());
+  }, [dispatch]);
+
   const pickFolder = useCallback(() => {
     void dispatch(pickFolderThunk());
   }, [dispatch]);
@@ -277,6 +295,9 @@ export function useAddTable() {
     clearValidationResult,
     resetForm,
     resetSession,
+    bulkImport,
+    bulkStageTables,
+    clearBulkImport,
     pickFolder,
     refreshFolder,
     selectFolderFile,
