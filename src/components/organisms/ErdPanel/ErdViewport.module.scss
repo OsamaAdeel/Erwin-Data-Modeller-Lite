@@ -29,6 +29,12 @@
   top: $space-3;
   right: $space-3;
   z-index: 2;
+
+  // The minimap (200×120) occupies a chunky fraction of the canvas on
+  // small viewports; users still get pan/zoom via the controls so the
+  // overview is the right thing to drop. Pref persists through the
+  // localStorage flag — re-shown when the viewport widens again.
+  @include mobile { display: none; }
 }
 
 .controls {
@@ -71,6 +77,12 @@
 .toggleOn {
   background: $primary-soft !important;
   color: $primary !important;
+}
+
+// Toggle is hidden on mobile alongside the minimap itself — a button
+// that toggles a hidden surface is just confusion.
+.minimapToggle {
+  @include mobile { display: none; }
 }
 
 .zoomLabel {

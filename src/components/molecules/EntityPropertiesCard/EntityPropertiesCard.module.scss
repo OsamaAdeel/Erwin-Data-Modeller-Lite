@@ -70,6 +70,22 @@
   }
 }
 
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-2 $space-4;
+  border-bottom: 1px solid $border;
+  background: $surface;
+}
+
+.searchCount {
+  flex-shrink: 0;
+  font-size: $fs-sm;
+  color: $text-muted;
+  font-variant-numeric: tabular-nums;
+}
+
 .tableWrap {
   overflow-x: auto;
 }
