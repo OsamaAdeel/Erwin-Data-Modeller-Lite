@@ -92,6 +92,7 @@ export default function AddTablePanel() {
     deleteStagedTable,
     editStagedTable,
     cancelEdit,
+    resetForm,
     finalize,
     unfinalize,
     generate,
@@ -184,6 +185,24 @@ export default function AddTablePanel() {
   // resolve the previous / next sibling. Recomputed only when the order or
   // membership changes — id strings are stable per row.
   const columnIds = useMemo(() => columns.map((c) => c.id), [columns]);
+
+  // True when the in-progress form has anything worth resetting: a table
+  // name, a description, more than one column row, or a column with any
+  // typed content. The default scaffold (one empty VARCHAR2 row) reads as
+  // "clean" so the Reset button stays disabled until the user starts
+  // typing.
+  const isFormDirty = useMemo(() => {
+    if (tableName.trim() || description.trim()) return true;
+    if (columns.length > 1) return true;
+    const c = columns[0];
+    return !!c && (
+      !!c.name.trim() ||
+      !!c.size ||
+      !!c.scale ||
+      c.type !== "VARCHAR2" ||
+      c.pk
+    );
+  }, [tableName, description, columns]);
 
   const formLocked = isFinalized;
 
@@ -568,9 +587,23 @@ export default function AddTablePanel() {
               <Button onClick={commitTable} disabled={!validation.canSubmit}>
                 {editingId ? t.sections.addForm.submitEdit : t.sections.addForm.submit}
               </Button>
-              {editingId && (
+              {editingId ? (
                 <Button variant="ghost" onClick={cancelEdit}>
                   {COMMON.buttons.cancel}
+                </Button>
+              ) : (
+                // When not editing, "Reset" clears the in-progress form
+                // (table name, description, columns) without touching
+                // anything already staged. Disabled when there's nothing
+                // to reset so the button doesn't read as actionable on a
+                // fresh form.
+                <Button
+                  variant="ghost"
+                  onClick={resetForm}
+                  disabled={!isFormDirty || formLocked}
+                  title="Clear the table name, description, and columns"
+                >
+                  Reset
                 </Button>
               )}
             </div>
