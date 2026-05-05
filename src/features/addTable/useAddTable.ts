@@ -23,6 +23,7 @@ import {
   replaceColumns as replaceColumnsAction,
   reorderColumns as reorderColumnsAction,
   resetForm as resetFormAction,
+  resetSession as resetSessionAction,
   selectFolderFile as selectFolderFileThunk,
   setDescription as setDescriptionAction,
   setTableName as setTableNameAction,
@@ -192,6 +193,10 @@ export function useAddTable() {
     dispatch(resetFormAction());
   }, [dispatch]);
 
+  const resetSession = useCallback(() => {
+    dispatch(resetSessionAction());
+  }, [dispatch]);
+
   const pickFolder = useCallback(() => {
     void dispatch(pickFolderThunk());
   }, [dispatch]);
@@ -271,6 +276,7 @@ export function useAddTable() {
     validateModel,
     clearValidationResult,
     resetForm,
+    resetSession,
     pickFolder,
     refreshFolder,
     selectFolderFile,

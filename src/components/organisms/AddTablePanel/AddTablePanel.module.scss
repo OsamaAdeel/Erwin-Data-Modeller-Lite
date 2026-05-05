@@ -49,6 +49,15 @@
   color: $text-muted;
 }
 
+// Holds Reset + Change file in a single right-aligned cluster, gap-spaced
+// so they read as paired actions rather than competing for the eye.
+.loadedSummaryActions {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+  flex-shrink: 0;
+}
+
 // "Don't have a model handy? Try with a sample model" — onboarding aid
 // shown only on first paint when nothing has been loaded yet.
 .sampleHint {
