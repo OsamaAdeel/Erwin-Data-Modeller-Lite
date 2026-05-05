@@ -92,7 +92,12 @@ export default function ErdPanel() {
 
   return (
     <div className={styles.wrap}>
-      <Card step={1} title={t.load.heading} subtitle={t.load.subhint}>
+      <Card
+        step={1}
+        stepState={erd.data ? "complete" : "active"}
+        title={t.load.heading}
+        subtitle={t.load.subhint}
+      >
         {!erd.data && (
           <p className={styles.explainer}>{t.load.explainer}</p>
         )}
@@ -116,7 +121,7 @@ export default function ErdPanel() {
       </Card>
 
       {erd.data && erd.stats && (
-        <Card step={2} title={t.view.heading} subtitle={t.view.subhint}>
+        <Card step={2} stepState="active" title={t.view.heading} subtitle={t.view.subhint}>
           <div className={styles.tileGrid}>
             <StatTile
               label={t.view.tilesEntities}

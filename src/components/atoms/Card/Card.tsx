@@ -1,28 +1,52 @@
 import { HTMLAttributes, ReactNode } from "react";
 import styles from "./Card.module.scss";
 
+export type StepState = "upcoming" | "active" | "complete";
+
 export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
   title?: ReactNode;
   subtitle?: ReactNode;
   step?: number | string;
+  /** Visual state for the step badge — "active" (default), "complete"
+   *  (renders a checkmark in the green tone), or "upcoming" (muted). */
+  stepState?: StepState;
   actions?: ReactNode;
   children?: ReactNode;
 }
+
+const stepStateClass: Record<StepState, string> = {
+  active: "",
+  complete: "stepComplete",
+  upcoming: "stepUpcoming",
+};
 
 export default function Card({
   title,
   subtitle,
   step,
+  stepState = "active",
   actions,
   className,
   children,
   ...rest
 }: CardProps) {
+  const stateCls = stepStateClass[stepState];
   return (
     <section className={`${styles.card} ${className ?? ""}`} {...rest}>
       {(title || step) && (
         <header className={styles.head}>
-          {step != null && <div className={styles.step}>{step}</div>}
+          {step != null && (
+            <div
+              className={`${styles.step} ${stateCls ? styles[stateCls] : ""}`}
+              aria-label={
+                stepState === "complete"
+                  ? `Step ${step} complete`
+                  : `Step ${step}`
+              }
+            >
+              {stepState === "complete" ? <CheckGlyph /> : step}
+            </div>
+          )}
           <div className={styles.titleWrap}>
             {title && <h2 className={styles.title}>{title}</h2>}
             {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
@@ -32,5 +56,23 @@ export default function Card({
       )}
       <div className={styles.body}>{children}</div>
     </section>
+  );
+}
+
+function CheckGlyph() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
   );
 }
