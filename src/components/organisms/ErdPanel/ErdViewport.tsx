@@ -213,21 +213,45 @@ export default function ErdViewport({
         </div>
       )}
       <div className={styles.controls}>
-        <button type="button" onClick={() => zoomBy(1.2)} title="Zoom in">+</button>
-        <button type="button" onClick={() => zoomBy(1 / 1.2)} title="Zoom out">−</button>
-        <button type="button" onClick={fit} title="Fit to view">⤢</button>
+        <button
+          type="button"
+          onClick={() => zoomBy(1.2)}
+          aria-label="Zoom in"
+          title="Zoom in"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomBy(1 / 1.2)}
+          aria-label="Zoom out"
+          title="Zoom out"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={fit}
+          aria-label="Fit to view"
+          title="Fit to view"
+        >
+          ⤢
+        </button>
         {minimapAvailable && (
           <button
             type="button"
             onClick={toggleMinimap}
+            aria-label={showMinimap ? "Hide minimap" : "Show minimap"}
             title={showMinimap ? "Hide minimap" : "Show minimap"}
             aria-pressed={showMinimap}
-            className={showMinimap ? styles.toggleOn : ""}
+            className={`${styles.minimapToggle} ${showMinimap ? styles.toggleOn : ""}`}
           >
             <MinimapGlyph />
           </button>
         )}
-        <span className={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
+        <span className={styles.zoomLabel} aria-label={`Zoom ${Math.round(zoom * 100)} percent`}>
+          {Math.round(zoom * 100)}%
+        </span>
       </div>
     </div>
   );

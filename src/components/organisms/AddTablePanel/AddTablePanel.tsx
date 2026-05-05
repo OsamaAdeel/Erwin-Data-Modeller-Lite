@@ -113,6 +113,22 @@ export default function AddTablePanel() {
     hydrateRecentFolders();
   }, [hydrateRecentFolders]);
 
+  // Warn the user before navigating away if they have staged tables that
+  // haven't been generated. The previous session's work is not persisted,
+  // so accidentally closing the tab loses it. Modern browsers ignore the
+  // custom message and show a generic prompt — we just need to set
+  // returnValue (or call preventDefault) to opt in.
+  const hasUnsavedWork = stagedTables.length > 0;
+  useEffect(() => {
+    if (!hasUnsavedWork) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedWork]);
+
   // Auto-collapse Step 1 the first time a file lands. Re-fires on every
   // new parseId so loading a different file collapses again.
   useEffect(() => {

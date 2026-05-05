@@ -1,6 +1,12 @@
+import { useEffect, useMemo, useState } from "react";
 import Badge from "@/components/atoms/Badge";
-import type { ModelEntity } from "@/services/xml/model";
+import Input from "@/components/atoms/Input";
+import type { ModelColumn, ModelEntity } from "@/services/xml/model";
 import styles from "./EntityPropertiesCard.module.scss";
+
+// Below this column count the search input is hidden — eyeballing the
+// list is faster than typing for short tables.
+const SEARCH_THRESHOLD = 8;
 
 export interface EntityPropertiesCardProps {
   entity: ModelEntity;
@@ -12,6 +18,21 @@ export default function EntityPropertiesCard({
   onClose,
 }: EntityPropertiesCardProps) {
   const colCount = entity.columns.length;
+  const [search, setSearch] = useState("");
+
+  // Reset the column filter when the user switches entities so the new
+  // table isn't hidden behind a stale query.
+  useEffect(() => {
+    setSearch("");
+  }, [entity.id]);
+
+  const visibleColumns = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return entity.columns;
+    return entity.columns.filter((c) => matchesQuery(c, q));
+  }, [entity.columns, search]);
+
+  const showSearch = colCount > SEARCH_THRESHOLD;
 
   return (
     <section
@@ -46,8 +67,35 @@ export default function EntityPropertiesCard({
         )}
       </header>
 
+      {showSearch && (
+        <div className={styles.searchRow}>
+          <Input
+            type="search"
+            placeholder="Filter columns…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && search) {
+                e.preventDefault();
+                setSearch("");
+              }
+            }}
+            spellCheck={false}
+            autoComplete="off"
+            aria-label="Filter columns"
+          />
+          {search && (
+            <span className={styles.searchCount} aria-live="polite">
+              {visibleColumns.length} of {colCount}
+            </span>
+          )}
+        </div>
+      )}
+
       {colCount === 0 ? (
         <p className={styles.empty}>This table has no columns.</p>
+      ) : visibleColumns.length === 0 ? (
+        <p className={styles.empty}>No columns match &ldquo;{search}&rdquo;.</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -61,7 +109,7 @@ export default function EntityPropertiesCard({
               </tr>
             </thead>
             <tbody>
-              {entity.columns.map((c) => {
+              {visibleColumns.map((c) => {
                 const dataType = c.physicalDataType ?? c.domainName ?? "—";
                 const nullableLabel = formatNullable(c.nullable);
                 return (
@@ -88,6 +136,15 @@ export default function EntityPropertiesCard({
       )}
     </section>
   );
+}
+
+// Match against the column's name, physical data type, or domain name —
+// whichever the user types about. Case-insensitive substring match.
+function matchesQuery(c: ModelColumn, q: string): boolean {
+  if (c.name.toLowerCase().includes(q)) return true;
+  if (c.physicalDataType?.toLowerCase().includes(q)) return true;
+  if (c.domainName?.toLowerCase().includes(q)) return true;
+  return false;
 }
 
 // "false" → No; "true" or any other non-null value → Yes; null → unknown.
