@@ -23,6 +23,11 @@ import { getParsedDoc } from "@/store/refs";
 import ColumnRow from "./ColumnRow";
 import styles from "./AddTablePanel.module.scss";
 
+// Step 2's entity browser caps the initial pill count to keep large models
+// (500+ tables) snappy on first paint. The user can opt to render the rest
+// via "Show all", or just start typing a search.
+const ENTITY_LIST_INITIAL_LIMIT = 50;
+
 export default function AddTablePanel() {
   const t = ADD_TABLE;
   const [search, setSearch] = useState("");
@@ -45,6 +50,9 @@ export default function AddTablePanel() {
   // or null when nothing is selected. Cleared on file change (parseId effect
   // below).
   const [selectedEntityName, setSelectedEntityName] = useState<string | null>(null);
+  // When true, render every entity pill at once. When false, cap the list
+  // at ENTITY_LIST_INITIAL_LIMIT to keep large models (500+ tables) snappy.
+  const [showAllEntities, setShowAllEntities] = useState(false);
   // Output-XML preview modal state. `pending` while the clone+emit
   // round-trip runs so the button can show a busy label.
   const [previewState, setPreviewState] = useState<
@@ -115,6 +123,7 @@ export default function AddTablePanel() {
   // the prior model would no longer resolve.
   useEffect(() => {
     setSelectedEntityName(null);
+    setShowAllEntities(false);
   }, [parsed?.parseId]);
 
   // Lazily build the full structured model (with columns + PKs) for Step 2's
@@ -149,6 +158,11 @@ export default function AddTablePanel() {
     }
     return m;
   }, [validation]);
+
+  // Stable id-list passed to ColumnRow so its keyboard-reorder handler can
+  // resolve the previous / next sibling. Recomputed only when the order or
+  // membership changes — id strings are stable per row.
+  const columnIds = useMemo(() => columns.map((c) => c.id), [columns]);
 
   const formLocked = isFinalized;
 
@@ -297,35 +311,61 @@ export default function AddTablePanel() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <ul className={styles.entityNames}>
-                {filteredEntities.length === 0 && (
-                  <li className={styles.entityEmpty}>
-                    {parsed.entityDict.size === 0
-                      ? "No tables in this model."
-                      : "No tables found."}
-                  </li>
-                )}
-                {filteredEntities.map((n) => {
-                  const isSelected =
-                    selectedEntityName != null &&
-                    n.toUpperCase() === selectedEntityName.toUpperCase();
-                  return (
-                    <li key={n}>
+              {(() => {
+                // Cap the visible pill count on first paint so a 500-entity
+                // model doesn't render 500 DOM nodes the user mostly won't
+                // look at. The cap drops as soon as the user types in the
+                // search (filtered list is already smaller) or clicks
+                // "Show all".
+                const isSearching = search.trim().length > 0;
+                const showAll = showAllEntities || isSearching;
+                const visible = showAll
+                  ? filteredEntities
+                  : filteredEntities.slice(0, ENTITY_LIST_INITIAL_LIMIT);
+                const hiddenCount = filteredEntities.length - visible.length;
+                return (
+                  <>
+                    <ul className={styles.entityNames}>
+                      {filteredEntities.length === 0 && (
+                        <li className={styles.entityEmpty}>
+                          {parsed.entityDict.size === 0
+                            ? "No tables in this model."
+                            : "No tables found."}
+                        </li>
+                      )}
+                      {visible.map((n) => {
+                        const isSelected =
+                          selectedEntityName != null &&
+                          n.toUpperCase() === selectedEntityName.toUpperCase();
+                        return (
+                          <li key={n}>
+                            <button
+                              type="button"
+                              className={`${styles.entityPill} ${isSelected ? styles.entityPillActive : ""}`}
+                              title={n}
+                              aria-pressed={isSelected}
+                              onClick={() =>
+                                setSelectedEntityName((cur) => (cur === n ? null : n))
+                              }
+                            >
+                              {n}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {hiddenCount > 0 && (
                       <button
                         type="button"
-                        className={`${styles.entityPill} ${isSelected ? styles.entityPillActive : ""}`}
-                        title={n}
-                        aria-pressed={isSelected}
-                        onClick={() =>
-                          setSelectedEntityName((cur) => (cur === n ? null : n))
-                        }
+                        className={styles.entityShowAll}
+                        onClick={() => setShowAllEntities(true)}
                       >
-                        {n}
+                        Show all ({filteredEntities.length})
                       </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                    )}
+                  </>
+                );
+              })()}
               {selectedEntity && (
                 <EntityPropertiesCard
                   entity={selectedEntity}
@@ -346,6 +386,7 @@ export default function AddTablePanel() {
                 error={validation.tableNameError}
               >
                 <Input
+                  kind="code"
                   placeholder={t.sections.addForm.namePlaceholder}
                   value={tableName}
                   maxLength={128}
@@ -370,7 +411,12 @@ export default function AddTablePanel() {
               </Field>
             </div>
 
-            <div className={`${styles.colsBlock} ${!validation.tableNameValid ? styles.colsLocked : ""}`}>
+            <div className={styles.colsBlock}>
+              {!validation.tableNameValid && (
+                <p className={styles.colsHint} role="status">
+                  Enter a valid table name above to save this table.
+                </p>
+              )}
               {ddlMode ? (
                 <DdlPasteArea
                   value={ddlText}
@@ -430,6 +476,7 @@ export default function AddTablePanel() {
                         error={errorByColId.get(c.id)}
                         isOnly={columns.length === 1}
                         locked={formLocked}
+                        siblingIds={columnIds}
                         onChange={(patch) => updateColumn(c.id, patch)}
                         onRemove={() => removeColumn(c.id)}
                         onReorder={reorderColumns}
@@ -685,6 +732,11 @@ interface GeneratedToastProps {
   tablesAdded: number;
 }
 
+// Auto-dismiss window. Long enough that a user who looks away briefly
+// still catches the confirmation, short enough that the toast doesn't
+// clutter the page across subsequent generates.
+const TOAST_AUTO_DISMISS_MS = 6000;
+
 function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
   // Capture the wall-clock time the user actually clicked Generate so the
   // toast says "generated at 4:42 PM" rather than recomputing on rerender.
@@ -692,13 +744,32 @@ function GeneratedToast({ filename, tablesAdded }: GeneratedToastProps) {
   // generate, so this initializer runs exactly when we want it to.
   const [generatedAt] = useState(() => new Date());
   const [dismissed, setDismissed] = useState(false);
+  const [paused, setPaused] = useState(false);
   const timeLabel = generatedAt.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  // Auto-dismiss after TOAST_AUTO_DISMISS_MS, paused while hovered so the
+  // user has time to read or click the link/code copy. The effect re-arms
+  // when paused flips off.
+  useEffect(() => {
+    if (dismissed || paused) return;
+    const id = window.setTimeout(() => setDismissed(true), TOAST_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(id);
+  }, [dismissed, paused]);
+
   if (dismissed) return null;
   return (
-    <div className={styles.success} role="status" aria-live="polite">
+    <div
+      className={styles.success}
+      role="status"
+      aria-live="polite"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
       <Badge tone="success">✓</Badge>
       <span className={styles.successText}>
         Generated{" "}

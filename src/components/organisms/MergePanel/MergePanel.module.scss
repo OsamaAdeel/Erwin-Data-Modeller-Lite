@@ -9,7 +9,9 @@
   grid-template-columns: 1fr 1fr;
   gap: $space-5;
 
-  @include mobile { grid-template-columns: 1fr; }
+  // Stack at tablet width too — the source/target dropzones get cramped
+  // below ~960px when sitting side-by-side.
+  @include tablet { grid-template-columns: 1fr; }
 }
 
 .explainer {
@@ -70,6 +72,7 @@
   grid-template-columns: repeat(3, 1fr);
   gap: $space-3;
 
+  @include tablet { grid-template-columns: repeat(2, 1fr); }
   @include mobile { grid-template-columns: 1fr; }
 }
 

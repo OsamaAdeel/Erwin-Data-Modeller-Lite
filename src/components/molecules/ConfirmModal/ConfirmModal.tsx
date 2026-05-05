@@ -2,7 +2,14 @@
 // dismiss patterns as HotkeysModal — could be lifted to a shared Dialog
 // primitive later if a third caller appears.
 
-import { KeyboardEvent as ReactKeyboardEvent, ReactNode, useEffect, useId, useRef } from "react";
+import {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  ReactNode,
+  useEffect,
+  useId,
+  useRef,
+} from "react";
 import Button from "@/components/atoms/Button";
 import styles from "./ConfirmModal.module.scss";
 
@@ -84,13 +91,17 @@ export default function ConfirmModal({
     }
   }
 
-  return (
-    <div
-      className={styles.backdrop}
-      onMouseDown={(e) => {
+  // For destructive prompts, ignore backdrop clicks — Esc + the explicit
+  // Cancel button are the only ways out. Stops a stray drag/click from
+  // silently dismissing a "Remove this row?" confirmation.
+  const onBackdropMouseDown = destructive
+    ? undefined
+    : (e: ReactMouseEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget) onCancel();
-      }}
-    >
+      };
+
+  return (
+    <div className={styles.backdrop} onMouseDown={onBackdropMouseDown}>
       <div
         ref={dialogRef}
         role="dialog"

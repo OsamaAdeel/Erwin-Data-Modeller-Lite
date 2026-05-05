@@ -93,6 +93,7 @@
   grid-template-columns: repeat(3, 1fr);
   gap: $space-3;
 
+  @include tablet { grid-template-columns: repeat(2, 1fr); }
   @include mobile { grid-template-columns: 1fr; }
 }
 
@@ -166,6 +167,28 @@
   color: #fff;
 }
 
+// "Show all (N)" button — visible when the entity list is capped on first
+// paint. Subtle by design; once clicked it disappears for the session.
+.entityShowAll {
+  align-self: flex-start;
+  margin-top: $space-1;
+  background: transparent;
+  border: 0;
+  padding: $space-1 0;
+  color: $primary;
+  font-size: $fs-sm;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover { color: $primary-dark; text-decoration: underline; }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
 .entityEmpty {
   color: $text-muted;
   font-style: italic;
@@ -193,8 +216,19 @@
   border-radius: $radius-sm;
   background: $surface-alt;
   padding: $space-3;
+}
 
-  &.colsLocked { opacity: 0.5; pointer-events: none; }
+// Replaces the prior ghost/locked treatment. Communicates the prerequisite
+// without disabling controls — users can scaffold columns first and fill
+// in the name later, which is more forgiving than gating the whole grid.
+.colsHint {
+  margin: 0 0 $space-3;
+  padding: $space-2 $space-3;
+  font-size: $fs-sm;
+  color: $amber;
+  background: $amber-bg;
+  border: 1px solid $amber-border;
+  border-radius: $radius-sm;
 }
 
 .colsHeader {

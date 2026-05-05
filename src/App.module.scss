@@ -1,0 +1,11 @@
+// Tab labels carry a Lucide-style icon next to the text. Icon + text live
+// in a flex strip so the text vertically aligns to the icon midline.
+.tabLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.tabLabelIcon {
+  display: inline-flex;
+}
