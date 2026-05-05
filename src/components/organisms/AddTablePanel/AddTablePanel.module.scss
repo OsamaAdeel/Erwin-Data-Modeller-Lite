@@ -132,14 +132,38 @@
   overflow-y: auto;
 
   li {
-    background: $surface;
-    border: 1px solid $border;
-    border-radius: $radius-sm;
-    padding: 4px 8px;
-    font-family: $font-mono;
-    font-size: $fs-sm;
-    color: $text;
+    list-style: none;
   }
+}
+
+.entityPill {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  padding: 4px 8px;
+  font-family: $font-mono;
+  font-size: $fs-sm;
+  color: $text;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    border-color: $primary;
+    background: $primary-soft;
+    color: $primary;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), var(--focus-ring-alpha-strong));
+    outline-offset: 2px;
+  }
+}
+
+.entityPillActive,
+.entityPillActive:hover {
+  background: $primary;
+  border-color: $primary;
+  color: #fff;
 }
 
 .entityEmpty {
