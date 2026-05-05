@@ -30,9 +30,11 @@ export function parseOracleDdl(input: string): ParsedDdl {
   let tableName: string | undefined;
   let body = input.trim();
 
-  // Strip a leading "CREATE TABLE [schema.]NAME (" if present.
+  // Strip a leading `CREATE TABLE [schema.]NAME (` if present. Schema and
+  // table can each be quoted ("FOO") or bare. Oracle exports — like the
+  // ones from the OFSAA toolkit — quote everything.
   const createMatch = body.match(
-    /CREATE\s+(?:GLOBAL\s+TEMPORARY\s+)?TABLE\s+(?:[A-Za-z_][\w$#]*\s*\.\s*)?([A-Za-z_][\w$#]*)\s*\(/i
+    /CREATE\s+(?:GLOBAL\s+TEMPORARY\s+)?TABLE\s+(?:"?[A-Za-z_][\w$#]*"?\s*\.\s*)?"?([A-Za-z_][\w$#]*)"?\s*\(/i
   );
   if (createMatch && createMatch.index != null) {
     tableName = createMatch[1];
@@ -58,14 +60,30 @@ export function parseOracleDdl(input: string): ParsedDdl {
       continue;
     }
 
+    // Named PK constraint, e.g. `CONSTRAINT "PK_1881" PRIMARY KEY ("A", "B")`.
+    // Picks up PK columns even when wrapped in a CONSTRAINT clause that
+    // would otherwise be silently skipped below.
+    const constraintPkMatch = line.match(
+      /^CONSTRAINT\s+(?:"[^"]+"|[A-Za-z_][\w$#]*)\s+PRIMARY\s+KEY\s*\(\s*([^)]+)\s*\)/i
+    );
+    if (constraintPkMatch) {
+      for (const c of constraintPkMatch[1].split(",")) {
+        pkCols.add(c.trim().replace(/^"|"$/g, "").toUpperCase());
+      }
+      continue;
+    }
+
     // Skip table-level constraints / indexes / checks etc.
     if (/^(CONSTRAINT|FOREIGN\s+KEY|UNIQUE|CHECK|INDEX|USING|PARTITION)\b/i.test(line)) {
       warnings.push(`Skipped: ${truncate(line, 80)}`);
       continue;
     }
 
+    // Column form: `[ "NAME" | NAME ] TYPE [(size [CHAR|BYTE] [, scale])] [...]`.
+    // The optional `CHAR` / `BYTE` keyword shows up on Oracle string columns
+    // ("VARCHAR2(3 CHAR)") and would otherwise break the size capture.
     const colMatch = line.match(
-      /^"?([A-Za-z_][\w$#]*)"?\s+([A-Za-z_][\w$#]*\d?)(?:\s*\(\s*(\d+)(?:\s*,\s*(-?\d+))?\s*\))?(.*)$/i
+      /^"?([A-Za-z_][\w$#]*)"?\s+([A-Za-z_][\w$#]*\d?)(?:\s*\(\s*(\d+)(?:\s+(?:CHAR|BYTE))?(?:\s*,\s*(-?\d+))?\s*\))?(.*)$/i
     );
     if (!colMatch) {
       warnings.push(`Couldn't parse: ${truncate(line, 80)}`);
