@@ -6,6 +6,7 @@ import { formatFileSize } from "@/services/folder/folderScan";
 import type {
   FolderFileMeta,
   PreferredFolderState,
+  RecentFileMeta,
   RecentFolderMeta,
 } from "@/features/addTable/useAddTable";
 import styles from "./FolderPicker.module.scss";
@@ -20,6 +21,11 @@ export interface FolderPickerProps {
   onUseRecent?: (id: string) => void;
   /** Drop a recent folder from IDB. */
   onForgetRecent?: (id: string) => void;
+  /** Re-open a specific file under a remembered folder. Resolves the
+   *  folder handle, re-permissions if needed, and dispatches loadFile. */
+  onUseRecentFile?: (id: string) => void;
+  /** Drop a single recent-file entry. */
+  onForgetRecentFile?: (id: string) => void;
   /** Optional override label for the empty/start state. */
   emptyHint?: string;
 }
@@ -32,9 +38,20 @@ export default function FolderPicker({
   onClear,
   onUseRecent,
   onForgetRecent,
+  onUseRecentFile,
+  onForgetRecentFile,
   emptyHint = "Pick a folder to auto-load the latest .xml file from it.",
 }: FolderPickerProps) {
-  const { name, files, selectedFileId, refreshable, loading, error, recents } = state;
+  const {
+    name,
+    files,
+    selectedFileId,
+    refreshable,
+    loading,
+    error,
+    recents,
+    recentFiles,
+  } = state;
   const selected = useMemo(
     () => files.find((f) => f.id === selectedFileId) ?? null,
     [files, selectedFileId]
@@ -60,6 +77,14 @@ export default function FolderPicker({
             disabled={loading}
             onUse={onUseRecent}
             onForget={onForgetRecent}
+          />
+        )}
+        {recentFiles.length > 0 && onUseRecentFile && (
+          <RecentFilesList
+            recents={recentFiles}
+            disabled={loading}
+            onUse={onUseRecentFile}
+            onForget={onForgetRecentFile}
           />
         )}
         {error && <div className={styles.error} role="alert">{error}</div>}
@@ -262,6 +287,75 @@ function RecentFoldersList({ recents, disabled, onUse, onForget }: RecentFolders
         ))}
       </ul>
     </div>
+  );
+}
+
+interface RecentFilesListProps {
+  recents: RecentFileMeta[];
+  disabled: boolean;
+  onUse: (id: string) => void;
+  onForget?: (id: string) => void;
+}
+
+function RecentFilesList({ recents, disabled, onUse, onForget }: RecentFilesListProps) {
+  return (
+    <div className={styles.recentsWrap}>
+      <div className={styles.recentsLabel}>Recent files</div>
+      <ul className={styles.recentsList}>
+        {recents.map((r) => {
+          const subtitle = r.folderName
+            ? `${r.folderName} · ${formatRelative(r.lastUsedAt)}`
+            : formatRelative(r.lastUsedAt);
+          return (
+            <li key={r.id} className={styles.recentRow}>
+              <button
+                type="button"
+                className={styles.recentName}
+                onClick={() => onUse(r.id)}
+                disabled={disabled}
+                title={`Re-open ${r.fileName} from ${r.folderName ?? "this folder"} (you'll be asked to grant read permission)`}
+              >
+                <FileGlyph className={styles.recentIcon} />
+                <span className={styles.recentNameText}>{r.fileName}</span>
+                <span className={styles.recentTime}>{subtitle}</span>
+              </button>
+              {onForget && (
+                <button
+                  type="button"
+                  className={styles.recentForget}
+                  onClick={() => onForget(r.id)}
+                  disabled={disabled}
+                  aria-label={`Forget ${r.fileName}`}
+                  title="Remove from recent list"
+                >
+                  ×
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function FileGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
   );
 }
 
