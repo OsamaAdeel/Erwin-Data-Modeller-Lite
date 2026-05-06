@@ -18,4 +18,46 @@
 // Smooth color transitions when toggling theme — no flicker.
 :root {
   transition: background-color 180ms ease, color 180ms ease;
+  // Lets `transition: height/block-size 200ms` interpolate against the
+  // `auto` / intrinsic keywords used by the <details> animation below.
+  // Pure capability-flag — does not auto-animate anything by itself.
+  interpolate-size: allow-keywords;
+}
+
+// Smooth open/close animation for native <details> elements via the
+// `::details-content` pseudo (Chrome/Edge 131+, Safari 17.4+). Older
+// browsers (Firefox at the time of writing) just snap open like the
+// default — graceful degradation, no regression.
+//
+// The whole rule is gated on `@supports selector(...)` so we don't
+// emit dead bytes for browsers that ignore them anyway, and keyed off
+// `prefers-reduced-motion` so motion-sensitive users get the snap.
+@supports selector(::details-content) {
+  details::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition:
+      block-size 200ms ease,
+      content-visibility 200ms ease allow-discrete;
+  }
+
+  details[open]::details-content {
+    block-size: auto;
+  }
+
+  // @starting-style is what makes the OPEN transition fire — without
+  // it the element starts at its final size and the transition is a
+  // no-op.
+  @starting-style {
+    details[open]::details-content {
+      block-size: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    details::details-content,
+    details[open]::details-content {
+      transition: none;
+    }
+  }
 }
