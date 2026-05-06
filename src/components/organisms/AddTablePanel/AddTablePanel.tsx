@@ -119,14 +119,18 @@ export default function AddTablePanel() {
     hydrateRecentFolders,
     useRecentFolder,
     forgetRecentFolder,
+    hydrateRecentFiles,
+    useRecentFile,
+    forgetRecentFile,
   } = useAddTable();
 
-  // Pull the IDB recent-folders list on mount so the empty-state can
-  // render it. Cheap — at most one IDB read; safe to fire on every
-  // mount.
+  // Pull the IDB recent-folders + recent-files lists on mount so the
+  // empty-state can render them. Cheap — at most two IDB reads; safe to
+  // fire on every mount.
   useEffect(() => {
     hydrateRecentFolders();
-  }, [hydrateRecentFolders]);
+    hydrateRecentFiles();
+  }, [hydrateRecentFolders, hydrateRecentFiles]);
 
   // Warn the user before navigating away if they have staged tables that
   // haven't been generated. The previous session's work is not persisted,
@@ -338,6 +342,8 @@ export default function AddTablePanel() {
               onClear={clearFolder}
               onUseRecent={useRecentFolder}
               onForgetRecent={forgetRecentFolder}
+              onUseRecentFile={useRecentFile}
+              onForgetRecentFile={forgetRecentFile}
             />
             <div className={styles.uploadSeparator} aria-hidden>or upload a single file</div>
             <FileDrop

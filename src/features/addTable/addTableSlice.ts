@@ -33,6 +33,13 @@ import {
   saveRecentFolder,
 } from "@/services/folder/recentFolders";
 import {
+  getRecentFile,
+  listRecentFiles,
+  removeRecentFile,
+  removeRecentFilesByFolder,
+  saveRecentFile,
+} from "@/services/folder/recentFiles";
+import {
   clearFolderFiles,
   clearPreferredFolderHandle,
   deleteParsedDoc,
@@ -170,11 +177,29 @@ export interface PreferredFolderState {
   // user can re-open with one permission click. The actual handle lives in
   // IDB; only the display tuple is mirrored to the slice.
   recents: RecentFolderMeta[];
+  // IDB-backed list of recently loaded files within recent folders. Each
+  // entry resolves through its folderId at click-time — file objects
+  // can't survive page reload, but the (folder, filename) pair can.
+  recentFiles: RecentFileMeta[];
+  // Which folder in the recents store the in-memory `name`/`files` came
+  // from. Lets selectFolderFile attribute its recent-file save back to
+  // the right folderId without re-querying IDB.
+  activeRecentFolderId: string | null;
 }
 
 export interface RecentFolderMeta {
   id: string;
   name: string;
+  lastUsedAt: number;
+}
+
+export interface RecentFileMeta {
+  id: string;        // composite "folderId::fileName"
+  folderId: string;
+  /** Folder display name resolved from the recents folder list. May be
+   *  null if the parent folder has been removed. */
+  folderName: string | null;
+  fileName: string;
   lastUsedAt: number;
 }
 
@@ -262,6 +287,8 @@ const initialFolderState: PreferredFolderState = {
   loading: false,
   error: undefined,
   recents: [],
+  recentFiles: [],
+  activeRecentFolderId: null,
 };
 
 const initialState: AddTableState = {
@@ -317,6 +344,10 @@ export interface PickFolderResult {
   refreshable: boolean;
   // Auto-selected file id (latest .xml). Null if the folder has no .xml files.
   autoSelectedId: string | null;
+  /** The recents-folder id we saved this directory under. Lets the slice
+   *  attribute follow-up recent-FILE saves to the right folder without
+   *  re-querying IDB. Null when no handle (input-fallback path). */
+  recentFolderId: string | null;
 }
 
 /**
@@ -351,6 +382,7 @@ export const pickFolder = createAsyncThunk<
     }));
 
     const autoSelectedId = meta[0]?.id ?? null;
+    const autoSelectedName = meta[0]?.name ?? null;
     // Auto-load the latest .xml so Step 1 fully resolves on a single click.
     // Fire-and-forget; loadFile maintains its own pending/loading state.
     if (autoSelectedId) {
@@ -360,11 +392,18 @@ export const pickFolder = createAsyncThunk<
 
     // Persist the handle for the recent-folders dropdown — only meaningful
     // when we actually have a handle (FS Access API path). Best-effort:
-    // a failure here doesn't fail the pick.
+    // a failure here doesn't fail the pick. Also record the auto-loaded
+    // file as a recent-file entry so the user can re-open it across
+    // sessions without re-picking the folder first.
+    let recentFolderId: string | null = null;
     if (result.handle) {
-      void saveRecentFolder(result.folderName, result.handle).then(() => {
-        void dispatch(hydrateRecentFolders());
-      });
+      const folderRecord = await saveRecentFolder(result.folderName, result.handle);
+      recentFolderId = folderRecord.id;
+      if (autoSelectedName) {
+        await saveRecentFile(folderRecord.id, autoSelectedName);
+      }
+      void dispatch(hydrateRecentFolders());
+      void dispatch(hydrateRecentFiles());
     }
 
     return {
@@ -372,6 +411,7 @@ export const pickFolder = createAsyncThunk<
       files: meta,
       refreshable: !!result.handle,
       autoSelectedId,
+      recentFolderId,
     };
   } catch (err) {
     if (err instanceof FolderPickError) return rejectWithValue(err.message);
@@ -430,28 +470,37 @@ export const useRecentFolder = createAsyncThunk<
     }));
 
     const autoSelectedId = meta[0]?.id ?? null;
+    const autoSelectedName = meta[0]?.name ?? null;
     if (autoSelectedId) {
       const file = getFolderFile(autoSelectedId);
       if (file) void dispatch(loadFile(file));
     }
 
-    // Bump lastUsedAt so the entry surfaces at the top next time.
-    void saveRecentFolder(record.name, record.handle).then(() => {
-      void dispatch(hydrateRecentFolders());
-    });
+    // Bump lastUsedAt so the entry surfaces at the top next time. Also
+    // record the auto-loaded file as a recent-file entry.
+    const folderRecord = await saveRecentFolder(record.name, record.handle);
+    if (autoSelectedName) {
+      await saveRecentFile(folderRecord.id, autoSelectedName);
+    }
+    void dispatch(hydrateRecentFolders());
+    void dispatch(hydrateRecentFiles());
 
     return {
+      recentFolderId: folderRecord.id,
       name: record.name,
       files: meta,
       refreshable: true,
       autoSelectedId,
-    };
+    } as PickFolderResult;
   } catch (err) {
     // Permission revoked or handle invalidated — drop the entry and
     // surface a friendly message.
     if (err instanceof FolderPickError) {
       await removeRecentFolder(id);
+      // Cascade: orphan recent files for the dropped folder.
+      await removeRecentFilesByFolder(id);
       void dispatch(hydrateRecentFolders());
+      void dispatch(hydrateRecentFiles());
       return rejectWithValue(err.message);
     }
     return rejectWithValue(err instanceof Error ? err.message : String(err));
@@ -462,7 +511,95 @@ export const forgetRecentFolder = createAsyncThunk<void, string, ThunkConfig>(
   "addTable/forgetRecentFolder",
   async (id, { dispatch }) => {
     await removeRecentFolder(id);
+    // Don't leave dangling recent-file pointers to a folder the user
+    // explicitly forgot.
+    await removeRecentFilesByFolder(id);
     void dispatch(hydrateRecentFolders());
+    void dispatch(hydrateRecentFiles());
+  }
+);
+
+// --- Recent files thunks ---------------------------------------------------
+
+export const hydrateRecentFiles = createAsyncThunk<
+  RecentFileMeta[],
+  void,
+  ThunkConfig
+>("addTable/hydrateRecentFiles", async () => {
+  const [files, folders] = await Promise.all([
+    listRecentFiles(),
+    listRecentFolders(),
+  ]);
+  const folderName = new Map(folders.map((f) => [f.id, f.name]));
+  return files.map((f) => ({
+    id: f.id,
+    folderId: f.folderId,
+    folderName: folderName.get(f.folderId) ?? null,
+    fileName: f.fileName,
+    lastUsedAt: f.lastUsedAt,
+  }));
+});
+
+/**
+ * Re-open a file from the recent-files dropdown. Looks up the parent
+ * folder, re-permissions and rescans it, then resolves the file by name
+ * and dispatches the normal loadFile pipeline. Drops the recent-file
+ * entry if either the folder is gone or the file no longer exists.
+ */
+export const useRecentFile = createAsyncThunk<void, string, ThunkConfig>(
+  "addTable/useRecentFile",
+  async (id, { dispatch, rejectWithValue }) => {
+    const recent = await getRecentFile(id);
+    if (!recent) return rejectWithValue("That file is no longer in your recent list.");
+    const folderRecord = await getRecentFolder(recent.folderId);
+    if (!folderRecord) {
+      await removeRecentFile(id);
+      void dispatch(hydrateRecentFiles());
+      return rejectWithValue("The parent folder is no longer remembered.");
+    }
+    try {
+      const entries = await rescanHandle(folderRecord.handle);
+      clearFolderFiles();
+      clearPreferredFolderHandle();
+      setPreferredFolderHandle(folderRecord.handle);
+
+      const xmlEntries = sortLatest(filterXml(entries));
+      for (const e of xmlEntries) setFolderFile(e.id, e.file);
+
+      const target = xmlEntries.find((e) => e.name === recent.fileName);
+      if (!target) {
+        await removeRecentFile(id);
+        void dispatch(hydrateRecentFiles());
+        return rejectWithValue(
+          `"${recent.fileName}" is no longer in this folder.`
+        );
+      }
+
+      await dispatch(loadFile(target.file));
+      // Bump folder + file recency so this becomes the most-recent of each.
+      await saveRecentFolder(folderRecord.name, folderRecord.handle);
+      await saveRecentFile(folderRecord.id, recent.fileName);
+      void dispatch(hydrateRecentFolders());
+      void dispatch(hydrateRecentFiles());
+    } catch (err) {
+      if (err instanceof FolderPickError) {
+        // Permission revoked — folder gone. Cascade-clean.
+        await removeRecentFolder(folderRecord.id);
+        await removeRecentFilesByFolder(folderRecord.id);
+        void dispatch(hydrateRecentFolders());
+        void dispatch(hydrateRecentFiles());
+        return rejectWithValue(err.message);
+      }
+      return rejectWithValue(err instanceof Error ? err.message : String(err));
+    }
+  }
+);
+
+export const forgetRecentFile = createAsyncThunk<void, string, ThunkConfig>(
+  "addTable/forgetRecentFile",
+  async (id, { dispatch }) => {
+    await removeRecentFile(id);
+    void dispatch(hydrateRecentFiles());
   }
 );
 
@@ -475,7 +612,7 @@ export const refreshFolder = createAsyncThunk<
   PickFolderResult,
   void,
   ThunkConfig
->("addTable/refreshFolder", async (_, { dispatch, rejectWithValue }) => {
+>("addTable/refreshFolder", async (_, { dispatch, getState, rejectWithValue }) => {
   const handle = getPreferredFolderHandle();
   if (!handle) {
     return rejectWithValue(
@@ -502,11 +639,14 @@ export const refreshFolder = createAsyncThunk<
       if (file) void dispatch(loadFile(file));
     }
 
+    // Refresh keeps the current folder, so reuse the active id from state.
+    const recentFolderId = getState().addTable.folder.activeRecentFolderId;
     return {
       name: handle.name,
       files: meta,
       refreshable: true,
       autoSelectedId,
+      recentFolderId,
     };
   } catch (err) {
     if (err instanceof FolderPickError) return rejectWithValue(err.message);
@@ -522,10 +662,16 @@ export const selectFolderFile = createAsyncThunk<
   string,                 // id
   string,                 // file id
   ThunkConfig
->("addTable/selectFolderFile", async (id, { dispatch, rejectWithValue }) => {
+>("addTable/selectFolderFile", async (id, { dispatch, getState, rejectWithValue }) => {
   const file = getFolderFile(id);
   if (!file) return rejectWithValue("Selected file is no longer available — refresh the folder.");
   await dispatch(loadFile(file));
+  // If we know which recents-folder this came from, record the file too.
+  const folder = getState().addTable.folder;
+  if (folder.activeRecentFolderId) {
+    await saveRecentFile(folder.activeRecentFolderId, file.name);
+    void dispatch(hydrateRecentFiles());
+  }
   return id;
 });
 
@@ -1119,19 +1265,16 @@ const slice = createSlice({
       .addCase(pickFolder.fulfilled, (state, action) => {
         state.folder.loading = false;
         if (!action.payload) return; // user cancelled — keep prior state
-        const { name, files, refreshable, autoSelectedId } = action.payload;
-        // Preserve the recents list across folder swaps — it lives in IDB
-        // and is hydrated separately, but the in-memory copy must survive.
-        const recents = state.folder.recents;
-        state.folder = {
-          name,
-          files,
-          selectedFileId: autoSelectedId,
-          refreshable,
-          loading: false,
-          error: undefined,
-          recents,
-        };
+        const { name, files, refreshable, autoSelectedId, recentFolderId } = action.payload;
+        // Preserve the recents lists across folder swaps — they live in IDB
+        // and are hydrated separately, but the in-memory copies must survive.
+        state.folder.name = name;
+        state.folder.files = files;
+        state.folder.selectedFileId = autoSelectedId;
+        state.folder.refreshable = refreshable;
+        state.folder.activeRecentFolderId = recentFolderId;
+        state.folder.loading = false;
+        state.folder.error = undefined;
       })
       .addCase(pickFolder.rejected, (state, action) => {
         state.folder.loading = false;
@@ -1143,16 +1286,12 @@ const slice = createSlice({
       })
       .addCase(refreshFolder.fulfilled, (state, action) => {
         const { name, files, refreshable, autoSelectedId } = action.payload;
-        const recents = state.folder.recents;
-        state.folder = {
-          name,
-          files,
-          selectedFileId: autoSelectedId,
-          refreshable,
-          loading: false,
-          error: undefined,
-          recents,
-        };
+        state.folder.name = name;
+        state.folder.files = files;
+        state.folder.selectedFileId = autoSelectedId;
+        state.folder.refreshable = refreshable;
+        state.folder.loading = false;
+        state.folder.error = undefined;
       })
       .addCase(refreshFolder.rejected, (state, action) => {
         state.folder.loading = false;
@@ -1167,22 +1306,22 @@ const slice = createSlice({
       .addCase(hydrateRecentFolders.fulfilled, (state, action) => {
         state.folder.recents = action.payload;
       })
+      .addCase(hydrateRecentFiles.fulfilled, (state, action) => {
+        state.folder.recentFiles = action.payload;
+      })
       .addCase(useRecentFolder.pending, (state) => {
         state.folder.loading = true;
         state.folder.error = undefined;
       })
       .addCase(useRecentFolder.fulfilled, (state, action) => {
-        const { name, files, refreshable, autoSelectedId } = action.payload;
-        const recents = state.folder.recents;
-        state.folder = {
-          name,
-          files,
-          selectedFileId: autoSelectedId,
-          refreshable,
-          loading: false,
-          error: undefined,
-          recents,
-        };
+        const { name, files, refreshable, autoSelectedId, recentFolderId } = action.payload;
+        state.folder.name = name;
+        state.folder.files = files;
+        state.folder.selectedFileId = autoSelectedId;
+        state.folder.refreshable = refreshable;
+        state.folder.activeRecentFolderId = recentFolderId;
+        state.folder.loading = false;
+        state.folder.error = undefined;
       })
       .addCase(useRecentFolder.rejected, (state, action) => {
         state.folder.loading = false;

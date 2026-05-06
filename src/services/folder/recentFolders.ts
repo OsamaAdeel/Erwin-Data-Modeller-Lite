@@ -9,9 +9,9 @@
 // "Recent folders" list ordered by recency. Capped at MAX_ENTRIES —
 // entries past the cap are evicted oldest-first on save.
 
-const DB_NAME = "erwin-lite";
-const DB_VERSION = 1;
-const STORE = "recentFolders";
+import { openDb, STORE_FOLDERS, tx as txStore } from "./db";
+
+const STORE = STORE_FOLDERS;
 const MAX_ENTRIES = 6;
 
 export interface RecentFolderRecord {
@@ -21,22 +21,8 @@ export interface RecentFolderRecord {
   lastUsedAt: number;
 }
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: "id" });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error("IndexedDB open failed"));
-  });
-}
-
 function tx(db: IDBDatabase, mode: IDBTransactionMode): IDBObjectStore {
-  return db.transaction(STORE, mode).objectStore(STORE);
+  return txStore(db, STORE, mode);
 }
 
 export async function listRecentFolders(): Promise<RecentFolderRecord[]> {

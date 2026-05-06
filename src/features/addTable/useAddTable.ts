@@ -16,8 +16,10 @@ import {
   dismissSuccess as dismissSuccessAction,
   editStagedTable as editStagedTableAction,
   finalize as finalizeAction,
+  forgetRecentFile as forgetRecentFileThunk,
   forgetRecentFolder as forgetRecentFolderThunk,
   generate as generateThunk,
+  hydrateRecentFiles as hydrateRecentFilesThunk,
   hydrateRecentFolders as hydrateRecentFoldersThunk,
   loadFile as loadFileThunk,
   loadSample as loadSampleThunk,
@@ -35,6 +37,7 @@ import {
   setTableName as setTableNameAction,
   unfinalize as unfinalizeAction,
   updateColumn as updateColumnAction,
+  useRecentFile as useRecentFileThunk,
   useRecentFolder as useRecentFolderThunk,
   validateModel as validateModelThunk,
 } from "./addTableSlice";
@@ -45,6 +48,7 @@ export type {
   FolderFileMeta,
   PreferredFolderState,
   PreviewInfo,
+  RecentFileMeta,
   RecentFolderMeta,
   StagedTable,
   SuccessInfo,
@@ -270,6 +274,24 @@ export function useAddTable() {
     [dispatch]
   );
 
+  const hydrateRecentFiles = useCallback(() => {
+    void dispatch(hydrateRecentFilesThunk());
+  }, [dispatch]);
+
+  const useRecentFile = useCallback(
+    (id: string) => {
+      void dispatch(useRecentFileThunk(id));
+    },
+    [dispatch]
+  );
+
+  const forgetRecentFile = useCallback(
+    (id: string) => {
+      void dispatch(forgetRecentFileThunk(id));
+    },
+    [dispatch]
+  );
+
   const canFinalize = !isFinalized && stagedTables.length > 0;
   const canGenerate = isFinalized && stagedTables.length > 0;
 
@@ -326,5 +348,8 @@ export function useAddTable() {
     hydrateRecentFolders,
     useRecentFolder,
     forgetRecentFolder,
+    hydrateRecentFiles,
+    useRecentFile,
+    forgetRecentFile,
   };
 }
