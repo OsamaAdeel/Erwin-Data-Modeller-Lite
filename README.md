@@ -10,9 +10,19 @@ A browser-based companion for [erwin Data Modeler](https://www.erwin.com/product
 
 | Tab              | What it does                                                                                                      |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **Add Tables**   | Pick a **preferred folder** and the latest `.xml` auto-loads. Queue multiple new tables (with optional description), finalize, then download an OFSAA-compliant XML. Strict Oracle identifier validation + a standalone OFSAA compliance validator. |
-| **Merge Models** | Load two DM 9.x files as **source** and **target**, diff them (missing tables, missing columns, conflicts), stage changes with an arrow-driven picker, and execute the merge into a fresh target XML with a report. |
-| **ERD Diagram**  | Auto-layout the model with `dagre`; render an interactive SVG ERD with pan, zoom, and hover-to-highlight relationships. |
+| **Add Tables**   | Pick a **preferred folder** (FS Access API on Chrome/Edge, `<input webkitdirectory>` elsewhere) and the latest `.xml` auto-loads. **Recent folders** and **recent files** persist to IndexedDB across sessions. Queue multiple tables manually with strict Oracle identifier validation, or **paste one or many `CREATE TABLE` statements** — single paste fills the form, two-or-more bulk-imports with per-table validation. **Drag-or-keyboard reordering** of columns, **click any existing entity** to inspect its full column list (Column / Type / Nullable / PK / FK), **validate** the model against OFSAA rules without generating, **preview** the would-be XML, **configurable filename pattern** (sequential `v1` / zero-padded `v01` / ISO `date`), then download. Toast queue for rapid generates. |
+| **Merge Models** | Load two DM 9.x files as **source** and **target**, diff them (missing tables, missing columns, conflicts), stage changes with an arrow-driven picker, execute the merge into a fresh target XML, and **validate the merged output** before download. |
+| **ERD Diagram**  | Auto-layout the model with `dagre`; render an interactive SVG ERD with pan, zoom, hover-to-highlight relationships, and click-to-inspect columns. **Search** entities (debounced; non-matches dim). **Minimap** with a draggable viewport rectangle. Full **keyboard navigation**: `Tab` cycles entities, `+`/`-` zoom, `0` fits, arrows pan (`Shift+arrows` for larger steps). Minimap auto-hides on mobile. |
+
+### App-wide ergonomics
+
+- **Light / dark theme toggle**, with `prefers-color-scheme` default and localStorage persistence.
+- **Hotkeys modal** (`?`) lists every keyboard shortcut.
+- **WCAG 2.1 AA targets**: focus rings on every interactive element, error/result regions announced via `role="alert"` / `role="status"`, `role="tabpanel"` routing, full keyboard operability.
+- **`prefers-reduced-motion`** respected for spinners, transitions, and step animations.
+- **Skip-to-main-content** link, semantic `<h1>`, `<noscript>` fallback.
+- **`beforeunload` guard** when staged tables would be lost.
+- **OFSAA validator** runs as an in-app dry-run with grouped, expandable violations.
 
 ---
 
@@ -36,34 +46,38 @@ The app is a thin React UI over three feature domains. Each feature owns a Redux
 flowchart TB
     subgraph UI["UI Layer — React Components"]
         direction LR
-        App[App.tsx<br/>Tab router]
+        App[App.tsx<br/>Tab router · role=tabpanel]
         AddPanel[AddTablePanel]
         MergePanel[MergePanel]
         ErdPanel[ErdPanel]
-        Shared["Shared atoms / molecules<br/>Button · Card · FileDrop · FolderPicker · TabBar · ErwinLogo"]
+        Shared["Shared atoms / molecules<br/>Button · Card (collapsible) · Input · Select · Textarea<br/>· Badge · ErwinLogo · ThemeToggle<br/>· FileDrop · FolderPicker · Field · StatTile · TabBar · EmptyState<br/>· ConfirmModal · HotkeysModal · MiniMap<br/>· ValidationPanel · XmlPreviewModal · EntityPropertiesCard"]
     end
 
     subgraph Hooks["Feature Hooks — selectors + dispatchers"]
         useAddTable
         useMerge
         useErd
+        useTheme
     end
 
     subgraph Store["Redux Store"]
         direction LR
-        addTableSlice[addTableSlice<br/>folder · loadFile · staging · finalize · generate]
-        mergeSlice[mergeSlice<br/>loadSlot · compute · execute]
+        addTableSlice[addTableSlice<br/>folder · recents · loadFile · staging · finalize<br/>· bulk DDL · validate · preview · generate · success queue<br/>· filenamePattern]
+        mergeSlice[mergeSlice<br/>loadSlot · compute · execute · validate]
         erdSlice[erdSlice<br/>loadFile]
     end
 
     subgraph Services["Services Layer — pure TS"]
         folder[folder/folderScan<br/>pickDirectory · filterXml · sortLatest]
-        parser[xml/parser<br/>DOMParser]
+        idb[folder/db + recentFolders + recentFiles<br/>IndexedDB-backed recents]
+        parser[xml/parser<br/>DOMParser + variant detection]
         emitter[xml/emitter<br/>OFSAA-compliant DM v9]
         validator[xml/validator<br/>validateOfsaaXml]
         modelSvc[xml/model<br/>FullModel]
+        serialize[xml/serialize<br/>OFSAA prolog · generateNextFileName]
         diff[merge/diff<br/>computePlan]
         execute[merge/execute<br/>executeMerge]
+        ddl[ddl/ddlParser<br/>parseOracleDdl · parseOracleDdlMulti]
         oracle[ddl/oracleParser<br/>identifier + size validation]
         layout[erd/layout<br/>dagre adapter]
     end
@@ -80,25 +94,32 @@ flowchart TB
     AddPanel --> useAddTable
     MergePanel --> useMerge
     ErdPanel --> useErd
+    App --> useTheme
 
     useAddTable --> addTableSlice
     useMerge --> mergeSlice
     useErd --> erdSlice
 
     addTableSlice --> folder
+    addTableSlice --> idb
     addTableSlice --> parser
+    addTableSlice --> ddl
     addTableSlice --> emitter
+    addTableSlice --> validator
+    addTableSlice --> serialize
     addTableSlice -.parseId / fileId.-> refs
     mergeSlice --> parser
     mergeSlice --> modelSvc
     mergeSlice --> diff
     mergeSlice --> execute
+    mergeSlice --> validator
     erdSlice --> parser
     erdSlice --> modelSvc
     erdSlice --> layout
 
     emitter --> oracle
     emitter -.optional.-> validator
+    ddl --> oracle
 ```
 
 ### Data flow — Add Tables (multi-table workflow)
@@ -109,37 +130,73 @@ sequenceDiagram
     participant FolderPicker
     participant useAddTable
     participant addTableSlice as addTableSlice<br/>(thunks + reducers)
+    participant IDB as IndexedDB<br/>(folders + files)
     participant Refs as Ref Store
     participant parser
+    participant ddl as ddlParser
     participant emitter
+    participant validator
 
-    User->>FolderPicker: Set preferred folder
-    FolderPicker->>addTableSlice: dispatch(pickFolder)
-    addTableSlice->>Refs: store File handles + DirectoryHandle
-    addTableSlice->>addTableSlice: filter .xml + sort newest-first
-    addTableSlice-->>FolderPicker: file list + auto-selected id
-    addTableSlice->>parser: parseFile(latest)
-    parser-->>addTableSlice: {doc, entityDict, domainMap, variant}
-    addTableSlice->>Refs: setParsedDoc(parseId, doc)
-
-    loop for each new table
-        User->>useAddTable: fill name + columns, click Add table
-        useAddTable->>addTableSlice: dispatch(commitTable)
-        addTableSlice->>addTableSlice: validate and append to stagedTables
+    rect rgba(0, 100, 200, 0.05)
+        Note over User: Step 1 — Source the model
+        alt Pick folder (or restore recent)
+            User->>FolderPicker: Set preferred folder / pick recent
+            FolderPicker->>addTableSlice: dispatch(pickFolder | useRecentFolder | useRecentFile)
+            addTableSlice->>IDB: saveRecentFolder + saveRecentFile
+            addTableSlice->>Refs: store File handles + DirectoryHandle
+            addTableSlice->>parser: parseFile(latest)
+            parser-->>addTableSlice: {doc, entityDict, domainMap, variant}
+            addTableSlice->>Refs: setParsedDoc(parseId, doc)
+        else Drop a single file
+            User->>FolderPicker: drag-drop XML
+            FolderPicker->>addTableSlice: dispatch(loadFile)
+        end
     end
 
-    User->>useAddTable: click Finalize model
-    useAddTable->>addTableSlice: dispatch(finalize)
-    addTableSlice->>addTableSlice: isFinalized = true (locks edits)
-
-    User->>useAddTable: click Generate XML
-    useAddTable->>addTableSlice: dispatch(generate)
-    addTableSlice->>Refs: getParsedDoc(parseId)
-    Refs-->>addTableSlice: XMLDocument
-    loop for each staged table
-        addTableSlice->>emitter: addEntityDMv9(doc, name, cols, domainMap)
+    rect rgba(0, 100, 200, 0.05)
+        Note over User: Step 3 — Stage tables (manual OR bulk)
+        alt Manual form entry
+            loop for each new table
+                User->>useAddTable: fill name + columns, click Add table
+                useAddTable->>addTableSlice: dispatch(commitTable)
+                addTableSlice->>addTableSlice: validate + append to stagedTables
+            end
+        else Paste DDL
+            User->>useAddTable: paste CREATE TABLE statements
+            useAddTable->>ddl: parseOracleDdlMulti(text)
+            ddl-->>useAddTable: {tables, parseErrors}
+            alt one statement
+                useAddTable->>addTableSlice: replaceColumns + setTableName (fills form)
+            else two or more
+                useAddTable->>addTableSlice: dispatch(bulkStageTables)
+                addTableSlice->>addTableSlice: validate each (dedupe, identifier, sizes)<br/>append valid + record bulkImport result
+            end
+        end
     end
-    addTableSlice->>User: download augmented XML
+
+    rect rgba(0, 100, 200, 0.05)
+        Note over User: Step 5 — Validate · Preview · Generate
+        opt Validate
+            User->>useAddTable: click Validate model
+            useAddTable->>addTableSlice: dispatch(validateModel)
+            addTableSlice->>emitter: clone + addEntityDMv9 (in-memory)
+            addTableSlice->>validator: validateOfsaaXml(serialized)
+            validator-->>addTableSlice: ok / grouped violations
+        end
+        opt Preview
+            User->>useAddTable: click Preview XML
+            useAddTable->>addTableSlice: dispatch(previewXml)
+            addTableSlice-->>User: open XmlPreviewModal (Copy / Download)
+        end
+        User->>useAddTable: click Finalize → click Generate XML
+        useAddTable->>addTableSlice: dispatch(generate)
+        addTableSlice->>Refs: getParsedDoc(parseId)
+        loop for each staged table
+            addTableSlice->>emitter: addEntityDMv9(doc, name, cols, domainMap)
+        end
+        addTableSlice->>addTableSlice: serializeDoc + generateNextFileName(pattern)
+        addTableSlice->>User: download augmented XML<br/>(success appended to toast queue)
+    end
 ```
 
 ### Data flow — Merge Models
@@ -262,7 +319,7 @@ if (!result.ok) {
 }
 ```
 
-10 unit tests in [src/services/xml/\_\_tests\_\_/ofsaa.test.ts](src/services/xml/__tests__/ofsaa.test.ts) cover both happy-path emission and each individual rule violation.
+10 unit tests in [src/services/xml/\_\_tests\_\_/ofsaa.test.ts](src/services/xml/__tests__/ofsaa.test.ts) cover both happy-path emission and each individual rule violation. The full Vitest suite (57 tests at the time of writing) also exercises the DDL parser, the filename-pattern variants, the hotkeys modal, and the custom Select.
 
 ---
 
@@ -270,7 +327,7 @@ if (!result.ok) {
 
 ```
 src/
-├── App.tsx                       # tab router
+├── App.tsx · App.module.scss     # tab router · role=tabpanel routing
 ├── main.tsx                      # React root — Provider + enableMapSet
 ├── CONSTANTS/                    # i18n strings for every tab
 ├── store/
@@ -278,38 +335,60 @@ src/
 │   └── refs.ts                   # XMLDocument · File · DirectoryHandle store
 ├── features/
 │   ├── addTable/
-│   │   ├── addTableSlice.ts      # folder + load + staging + finalize + generate
+│   │   ├── addTableSlice.ts      # folder + recents + load + DDL bulk
+│   │   │                         #   + staging + finalize + validate + preview
+│   │   │                         #   + generate + success queue + filenamePattern
 │   │   ├── useAddTable.ts        # hook wrapper
 │   │   └── validation.ts         # form-level Oracle identifier checks
 │   ├── merge/
-│   │   ├── mergeSlice.ts         # loadSlot thunk + compute/execute reducers
+│   │   ├── mergeSlice.ts         # loadSlot thunk + compute/execute/validate
 │   │   └── useMerge.ts
-│   └── erd/
-│       ├── erdSlice.ts           # loadFile thunk
-│       ├── useErd.ts
-│       └── layout.ts             # dagre adapter
+│   ├── erd/
+│   │   ├── erdSlice.ts           # loadFile thunk
+│   │   ├── useErd.ts
+│   │   └── layout.ts             # dagre adapter
+│   └── theme/useTheme.ts         # light/dark + prefers-color-scheme + localStorage
 ├── services/
-│   ├── ddl/oracleParser.ts       # Oracle identifier + size/scale rules
-│   ├── folder/folderScan.ts      # pickDirectory · filter · sort · rescan
+│   ├── ddl/
+│   │   ├── ddlParser.ts          # parseOracleDdl + parseOracleDdlMulti
+│   │   │                         #   (quoted ids, named PK constraints, CHAR/BYTE)
+│   │   ├── oracleParser.ts       # Oracle identifier + size/scale rules
+│   │   └── __tests__/ddlParser.test.ts  # 18 parser cases
+│   ├── folder/
+│   │   ├── folderScan.ts         # pickDirectory · filter · sort · rescan
+│   │   ├── db.ts                 # shared IndexedDB v2 (folders + files stores)
+│   │   ├── recentFolders.ts      # IDB-backed recent folders (handle + name + ts)
+│   │   └── recentFiles.ts        # IDB-backed recent files (folderId + filename)
 │   └── xml/
 │       ├── parser.ts             # DOMParser + variant detection
 │       ├── emitter.ts            # OFSAA-compliant addEntityDMv9 (+ classic)
 │       ├── validator.ts          # validateOfsaaXml — standalone rule checker
-│       ├── serialize.ts          # XMLSerializer + canonical prolog
+│       ├── serialize.ts          # OFSAA prolog + generateNextFileName(pattern)
 │       ├── model.ts              # FullModel projection
 │       ├── namespaces.ts         # dm / emx namespace URIs
 │       ├── relationships.ts      # DM 9.x Relationship extraction
-│       ├── __tests__/ofsaa.test.ts # 10 OFSAA rule tests (vitest + jsdom)
+│       ├── __tests__/
+│       │   ├── ofsaa.test.ts             # 10 OFSAA rule tests
+│       │   └── generateNextFileName.test.ts  # 18 filename-pattern tests
 │       └── merge/
 │           ├── diff.ts           # computePlan
 │           ├── execute.ts        # executeMerge (fresh-parse target)
 │           └── types.ts
 ├── components/
-│   ├── atoms/                    # Button, Card, Input, Badge, Textarea, ErwinLogo
-│   ├── molecules/                # FileDrop, FolderPicker, Field, StatTile, TabBar, EmptyState
-│   └── organisms/                # AddTablePanel, MergePanel, ErdPanel
-├── layout/                       # AppShell, TopBar, Footer
-└── styles/                       # SCSS tokens, resets, mixins
+│   ├── atoms/                    # Badge · Button · Card (collapsible · stepState)
+│   │                             #   · ErwinLogo · Input (kind="text|code")
+│   │                             #   · Select (combobox/listbox + type-ahead)
+│   │                             #   · Textarea · ThemeToggle
+│   ├── molecules/                # ConfirmModal · EmptyState · EntityPropertiesCard
+│   │                             #   · Field · FileDrop · FolderPicker · HotkeysModal
+│   │                             #   · MiniMap · StatTile · TabBar (id + aria-controls)
+│   │                             #   · ValidationPanel · XmlPreviewModal
+│   └── organisms/                # AddTablePanel · MergePanel · ErdPanel (+ ErdEntity
+│                                 #   · ErdEdge · ErdViewport with keyboard pan/zoom)
+├── layout/                       # AppShell (+ skip link) · TopBar (h1 + theme) · Footer
+├── utils/download.ts             # Blob download helper
+└── styles/                       # SCSS tokens, reset, mixins, global
+                                  #   (interpolate-size + ::details-content animation)
 ```
 
 ---
